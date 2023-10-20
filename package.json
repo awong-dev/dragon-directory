@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Dragon Directory Creation script",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -15,5 +16,8 @@
   "bugs": {
     "url": "https://github.com/awong-dev/dragon-directory/issues"
   },
-  "homepage": "https://github.com/awong-dev/dragon-directory#readme"
+  "homepage": "https://github.com/awong-dev/dragon-directory#readme",
+  "dependencies": {
+    "csv-parse": "^5.5.2"
+  }
 }
