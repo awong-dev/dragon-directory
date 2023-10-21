@@ -124,15 +124,13 @@ function record_to_students(record) {
   return students;
 }
 
-function main() {
-  if (process.argv.length !== 4) {
-    console.error('Expected input filename!');
-    process.exit(1);
-  }
-
+// Takes a csv file and returns an array of student objects.
+// Note that there may be duplicates.
+// grouped by bus route, by teacher, and by neighborhood school.
+function extract_to_students(csv_path) {
   // Gravity forms has a random codepoint before the BOM. Strip it out.
   // TODO: Test to ensure it's not a quote or a bom.  Frankly, we should eat until the first quote.
-  const raw_csv = fs.readFileSync(process.argv[2],
+  const raw_csv = fs.readFileSync(csv_path, 
       { encoding: 'utf8', flag: 'r' }).slice(1);
 
   // Parse the CSV into records.
@@ -153,9 +151,81 @@ function main() {
     students.push(...record_to_students(r));
   }
 
-  console.log(students[0]);
-  console.log(students[10]);
-  console.log(students[18]);
+  return students;
 }
 
-main();
+// Returns students grouped by bus;
+function group_by_bus(students) {
+  const results = {};
+
+  for (const s of students) {
+    const bus_route = s.bus_route || 'No Bus';
+    if (results.hasOwnProperty(bus_route)) {
+      results[bus_route].push(s);
+    } else {
+      results[bus_route] = [ s ];
+    }
+  }
+
+  return results;
+}
+
+// Returns students grouped by neighborhood school.
+function group_by_school(students) {
+  const results = {};
+
+  for (const s of students) {
+    const school = s.neighborhood_school || 'Unknown School';
+    if (results.hasOwnProperty(school)) {
+      results[school].push(s);
+    } else {
+      results[school] = [ s ];
+    }
+  }
+
+  return results;
+}
+
+// Returns students grouped by teacher. The object key
+// is the teacher last name, first name, and grade.
+function group_by_teacher(students) {
+  const results = {};
+
+  for (const s of students) {
+    // Sort by last-name first.
+    const teacher_sort_key = s.teacher.split(' ').map(x => x.trim()).filter(x => x !== '');
+
+    if (teacher_sort_key.length === 0) {
+      teacher_sort_key.push('Unknown Teacher');
+    } else {
+      const last_name = teacher_sort_key.pop();
+      teacher_sort_key.unshift(last_name);
+    }
+
+    teacher_sort_key.push(s.grade || 'Unknown Grade');
+
+    if (results.hasOwnProperty(teacher_sort_key)) {
+      results[teacher_sort_key].push(s);
+    } else {
+      results[teacher_sort_key] = [ s ];
+    }
+  }
+
+  return results;
+}
+
+// Returns an object with students grouped by bus, school, and teacher.
+function group_students(students) {
+  const by_bus = group_by_bus(students);
+  const by_school = group_by_school(students);
+  const by_teacher = group_by_teacher(students);
+
+  return { by_teacher, by_bus, by_school };
+}
+
+if (process.argv.length !== 3) {
+  console.error('Expected input csv file as single argument!');
+  process.exit(1);
+}
+
+console.log(JSON.stringify(group_students(extract_to_students(process.argv[2])), null, 2));
