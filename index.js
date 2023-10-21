@@ -1,5 +1,6 @@
 import { parse } from 'csv-parse/sync';
 import * as fs from 'fs';
+import { parseArgs } from "node:util";
 
 // A record can contain up to 4 parent/guardian information sets.
 //
@@ -38,18 +39,18 @@ function extract_parents(record) {
 
   for (let i = 1; i <= 4; i++) {
     const parent_name = [
-       record[`Parent / Guardian #${i} Name (Prefix)`],
-       record[`Parent / Guardian #${i} Name (First)`],
-       record[`Parent / Guardian #${i} Name (Middle)`],
-       record[`Parent / Guardian #${i} Name (Last)`],
-       record[`Parent / Guardian #${i} Name (Suffix)`],
-       ].filter((x) => x.trim() !== "").join(' ').trim();
-    const email = record[`Parent / Guardian #${i} Email`].trim();
-    const phone = record[`Parent / Guardian #${i} Phone`].trim();
+      record[`Parent / Guardian #${i} Name (Prefix)`],
+      record[`Parent / Guardian #${i} Name (First)`],
+      record[`Parent / Guardian #${i} Name (Middle)`],
+      record[`Parent / Guardian #${i} Name (Last)`],
+      record[`Parent / Guardian #${i} Name (Suffix)`],
+    ].filter((x) => x.trim() !== "").join(' ').trim();
+      const email = record[`Parent / Guardian #${i} Email`].trim();
+      const phone = record[`Parent / Guardian #${i} Phone`].trim();
 
-    if (parent_name !== "") {
-      parents.push({ parent_name, email, phone, in_room_list, volunteer_interest, pta_interest, in_dragon_directory, orig_entry_id, orig_entry_date });
-    }
+      if (parent_name !== "") {
+        parents.push({ parent_name, email, phone, in_room_list, volunteer_interest, pta_interest, in_dragon_directory, orig_entry_id, orig_entry_date });
+      }
   }
 
   return parents;
@@ -96,17 +97,17 @@ function extract_students(record) {
 
   for (let i = 1; i <= 4; i++) {
     const student_name = [
-       record[`Student #${i} Name (Prefix)`],
-       record[`Student #${i} Name (First)`],
-       record[`Student #${i} Name (Middle)`],
-       record[`Student #${i} Name (Last)`],
-       record[`Student #${i} Name (Suffix)`],
-       ].filter((x) => x.trim() !== "").join(' ').trim();
-    const grade = record[`Student #${i} Grade Level`].trim();
-    const teacher = record[`Student #${i} Teacher`].trim();
-    if (student_name !== "") {
-      students.push({ student_name, grade, teacher, neighborhood_school, bus_route, in_dragon_directory, orig_entry_date, orig_entry_date  });
-    }
+      record[`Student #${i} Name (Prefix)`],
+      record[`Student #${i} Name (First)`],
+      record[`Student #${i} Name (Middle)`],
+      record[`Student #${i} Name (Last)`],
+      record[`Student #${i} Name (Suffix)`],
+    ].filter((x) => x.trim() !== "").join(' ').trim();
+      const grade = record[`Student #${i} Grade Level`].trim();
+      const teacher = record[`Student #${i} Teacher`].trim();
+      if (student_name !== "") {
+        students.push({ student_name, grade, teacher, neighborhood_school, bus_route, in_dragon_directory, orig_entry_date, orig_entry_date  });
+      }
   }
 
   return students;
@@ -135,23 +136,23 @@ function extract_to_students(csv_path) {
 
   // Parse the CSV into records.
   const records = parse(raw_csv, {
-    bom: true,
-    columns: true,
-    skip_empty_lines: true
-  });
+bom: true,
+columns: true,
+skip_empty_lines: true
+});
 
-  const directory_info = {
-    by_class: {},
-    by_bus: {},
-    by_school: {},
-  };
+const directory_info = {
+by_class: {},
+          by_bus: {},
+          by_school: {},
+};
 
-  const students = [];
-  for (const r of records) {
-    students.push(...record_to_students(r));
-  }
+const students = [];
+for (const r of records) {
+  students.push(...record_to_students(r));
+}
 
-  return students;
+return students;
 }
 
 // Returns students grouped by bus;
@@ -223,9 +224,26 @@ function group_students(students) {
   return { by_teacher, by_bus, by_school };
 }
 
-if (process.argv.length !== 3) {
-  console.error('Expected input csv file as single argument!');
-  process.exit(1);
-}
+async function main() {
+  const {values, positionals} = parseArgs({
+    options: {
+      dedupe: { type: "boolean", short: "d", },
+    },
+    allowPositionals: true
+  });
 
-console.log(JSON.stringify(group_students(extract_to_students(process.argv[2])), null, 2));
+  if (!positionals[0]) {
+    console.error("Missing <csv file>");
+    process.exit(1);
+  }
+
+  let students = extract_to_students(positionals[0]);
+
+  if (values.dedupe) {
+    students = await dedupe(students);
+  }
+
+  console.log(JSON.stringify(students, null, 2));
+};
+
+await main();
