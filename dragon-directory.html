@@ -3,7 +3,9 @@
 <head>
 <title>Dragon Directory Maker</title>
 <script type="module" src="dragon-directory.js"></script>
-<script>
+<script type="module">
+  import jsPDF from 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/+esm';
+
   function renderStudents(raw_csv) {
     const students = dragonDirectory.extract_to_students(raw_csv);
     const groups = dragonDirectory.group_students(students);
@@ -31,6 +33,28 @@
     }
   }
 
+  function makePdf(el) {
+    const password = document.getElementById('password').value.trim();
+    const pdfConfig = {
+      orientation: "potrait",
+      unit: "pt",  // pt is correct for HTML since font sizes are points.
+      format: 'letter',
+    };
+    if (password !== '') {
+      pdfConfig.encryption = {
+        userPassword: password,
+        ownerPassword: password,
+        userPermissions: ['print', 'modify', 'copy', 'annot-forms' ]
+      };
+    }
+
+    const doc = new jsPDF(pdfConfig);
+
+    doc.html(document.getElementById('student_table'),
+        { callback: doc => doc.save('a.pdf')});
+
+  }
+
   addEventListener("load", (event) => {
     document.getElementById('csv').addEventListener('change', function(e) {
       if (e.target.files[0]) {
@@ -42,12 +66,20 @@
         reader.readAsText(e.target.files[0]);
       }
     });
+
+    document.getElementById('makepdf').addEventListener('click', makePdf);
   });
+
 </script>
 </head>
 <body>
 <label for="csv">CSV File</label>
 <input type="file" id="csv" name="csv" accept="text/csv"></input>
+<br>
+<label for="csv">Password (blank for none)</label>
+<input type="text" id="password" name="password"></input>
+<br>
+<button id="makepdf">Make PDF</button>
 <hr />
 <div id="student_table"></div>
 </body>

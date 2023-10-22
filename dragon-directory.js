@@ -1,5 +1,4 @@
 import { parse } from 'https://cdn.jsdelivr.net/npm/csv-parse@5.5.2/dist/esm/sync.js';
-import jspdf from 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/+esm'
 
 // A record can contain up to 4 parent/guardian information sets.
 //
