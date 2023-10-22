@@ -18,6 +18,11 @@
   },
   "homepage": "https://github.com/awong-dev/dragon-directory#readme",
   "dependencies": {
-    "csv-parse": "^5.5.2"
+    "csv-parse": "^5.5.2",
+    "jsdom": "^22.1.0",
+    "jspdf": "^2.5.1"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
   }
 }

@@ -1,7 +1,5 @@
-import { parse } from 'csv-parse/sync';
-import * as fs from 'fs';
-import { parseArgs } from "node:util";
-import { jsPDF } from "jspdf";
+import { parse } from 'https://cdn.jsdelivr.net/npm/csv-parse@5.5.2/dist/esm/sync.js';
+import jspdf from 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/+esm'
 
 // A record can contain up to 4 parent/guardian information sets.
 //
@@ -129,11 +127,10 @@ function record_to_students(record) {
 // Takes a csv file and returns an array of student objects.
 // Note that there may be duplicates.
 // grouped by bus route, by teacher, and by neighborhood school.
-function extract_to_students(csv_path) {
+function extract_to_students(raw_csv) {
   // Gravity forms has a random codepoint before the BOM. Strip it out.
   // TODO: Test to ensure it's not a quote or a bom.  Frankly, we should eat until the first quote.
-  const raw_csv = fs.readFileSync(csv_path, 
-      { encoding: 'utf8', flag: 'r' }).slice(1);
+  raw_csv = raw_csv.slice(1);
 
   // Parse the CSV into records.
   const records = parse(raw_csv, {
@@ -257,4 +254,4 @@ async function main() {
 };
 */
 
-export { extract_to_students, group_students }
+window.dragonDirectory = { extract_to_students, group_students };
