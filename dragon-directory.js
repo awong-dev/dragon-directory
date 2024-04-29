@@ -58,6 +58,14 @@ function extract_parents(record) {
   return parents;
 }
 
+function unspecifiedToEmpty(value) {
+   if (value === "Unspecified") {
+     return "";
+   }
+
+   return value;
+}
+
 // A record can contain up to 4 student information sets.
 //
 // The entries for students is is structured as follows:
@@ -90,8 +98,8 @@ function extract_parents(record) {
 function extract_students(record) {
   const students = [];
 
-  const neighborhood_school = record['Neighborhood School'].trim();
-  const bus_route = record['Bus Route'].trim();
+  const neighborhood_school = unspecifiedToEmpty(record['Neighborhood School'].trim());
+  const bus_route = unspecifiedToEmpty(record['Bus Route'].trim());
 
   const in_dragon_directory = record['Include your family in the Dragon Directory?'].trim() === 'Yes';
   const orig_entry_id = record['Entry Id'].trim();
@@ -253,25 +261,29 @@ function renderStudents(raw_csv) {
       return (html`
           <section class="teacher-card">
             <h2 class="teacher">${v[0].teacher} - Grade ${v[0].grade}</h2>
-            <article class="classlist">
+            <ul class="classlist">
               ${v.map(student => {
                   if (student.in_dragon_directory) {
                       return (html`
-                          <header>${student.student_name}</header>
-                          ${student.parents.map(p => html`
-                              <article class="parent-info">
-                                  <div class="name">${p.parent_name}</div>
-                                  <div class="phone"><a href="tel:${p.phone}">${p.phone}</a></div>
-                                  <div class="email"><a href="mailto:${p.email}">${p.email}</a></div>
-                              <//>
-                            `)}
-                          ${student.neighborhood_school && html`<div class="nh-school"><h3>Neighborhood School</h3> ${student.neighborhood_school}</div>`}
-                          ${student.bus_route && html`<div class="nh-bus"><h3>Bus Route</h3> ${student.bus_route}</div>`}
+                          <li class="student-entry">
+                              <header>${student.student_name}</header>
+                              <div class="student-info">
+                                  ${student.parents.map(p => html`
+                                      <div class="parent-info">
+                                          <div class="name">${p.parent_name}</div>
+                                          <div class="phone"><a href="tel:${p.phone}">${p.phone}</a></div>
+                                          <div class="email"><a href="mailto:${p.email}">${p.email}</a></div>
+                                      <//>
+                                    `)}
+                                  ${student.neighborhood_school && html`<div class="nh-school-info"><div>Neighborhood School</div> ${student.neighborhood_school}</div>`}
+                                  ${student.bus_route && html`<div class="bus-info"><div>Bus Route</div> ${student.bus_route}</div>`}
+                              </div>
+                          </li>
                       `);
                    }
                 })
               }
-            </article>
+            </ul>
           </section>
       `);
     }), student_table);

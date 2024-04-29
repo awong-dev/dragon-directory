@@ -1,15 +1,66 @@
+#student_table {
+    max-width: 1024px;
+    margin: auto;
+}
+
 .teacher {
     color: red;
     background-color: turquoise;
-    font-size: xx-large;
-    padding-left: 2em;
+    font-size: 18pt;
+    padding-left: 1ex;
     padding-bottom: 1ex;
     padding-top: 0.5ex;
-    margin-bottom: 0;
+    margin-bottom: 1em;
 }
 
 .classlist {
     background: #ffc3c3;
     padding: 1ex;
-    font-size: 14pt;
+    font-size: 12pt;
+    list-style-type: none;
 }
+
+.student-entry {
+    background-color: white;
+    padding: 1ex 1ex 1ex 1ex;
+    margin: 1ex 1ex 1ex 1ex;
+}
+
+.student-entry:nth-child(even)  {
+    background-color: lightgray;
+}
+
+.student-entry > header {
+    padding: 0.5ex 0.5ex 0.5ex 0.5ex;
+    font-size: +1;
+    font-weight: bold;
+}
+
+.student-info {
+    display: grid;
+    grid-template-columns: 1fr 1fr 3fr;
+}
+
+.student-info > div {
+    padding: 0ex 0ex 0ex 2ex;
+    margin-bottom: 0.5ex;
+}
+
+.parent-info {
+    display: inline-grid;
+    grid-column: span 3;
+    grid-template-columns: subgrid;
+}
+
+.nh-school-info {
+    display: inline-grid;
+    grid-column: span 3;
+    grid-template-columns: subgrid;
+}
+
+.bus-info {
+    display: inline-grid;
+    grid-column: span 3;
+    grid-template-columns: subgrid;
+}
+
