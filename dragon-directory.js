@@ -260,7 +260,7 @@ function renderStudents(raw_csv) {
 
       return (html`
           <section class="teacher-card">
-            <h2 class="teacher">${v[0].teacher} - Grade ${v[0].grade}</h2>
+            <header class="teacher">${v[0].teacher} - Grade ${v[0].grade}</header>
             <ul class="classlist">
               ${v.map(student => {
                   if (student.in_dragon_directory) {
@@ -306,9 +306,16 @@ function makePdf(el) {
 
   const doc = new jsPDF(pdfConfig);
 
-  doc.html(document.getElementById('student_table'),
-      { callback: doc => doc.save('a.pdf')});
-
+  // Scaling the size of the PDF is hard.
+  // See https://github.com/parallax/jsPDF/issues/2925#issuecomment-1141844339
+  // and https://github.com/parallax/jsPDF/issues/2925#issuecomment-1035596125
+  const source_el = document.getElementById('student_table');
+  doc.html(source_el,
+      {
+        callback: doc => doc.save('a.pdf'),
+        width: 500,
+        windowWidth: source_el.clientWidth,
+      });
 }
 
 export default { renderStudents, makePdf };
