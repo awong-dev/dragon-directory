@@ -1,4 +1,8 @@
-import { parse } from 'https://cdn.jsdelivr.net/npm/csv-parse@5.5.2/dist/esm/sync.js';
+import { parse } from 'https://cdn.jsdelivr.net/npm/csv-parse@5.5.2/dist/esm/sync.js'
+import jsPDF from 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/+esm'
+
+import { html, render } from 'https://unpkg.com/htm/preact/standalone.module.js'
+
 
 // A record can contain up to 4 parent/guardian information sets.
 //
@@ -215,42 +219,84 @@ function group_students(students) {
   return { by_teacher, by_bus, by_school };
 }
 
-/*
-async function main() {
-  const {values, positionals} = parseArgs({
-    options: {
-      dedupe: { type: "boolean", short: "d", },
-    },
-    allowPositionals: true
-  });
-
-  if (!positionals[0]) {
-    console.error("Missing <csv file>");
-    process.exit(1);
+function by_teacher_comparator([a_k,a_v], [b_k,b_v]) {
+  if (a_v[0].grade < b_v[0].grade) {
+    return -1;
+  }
+  if (a_v[0].grade > b_v[0].grade) {
+    return 1;
   }
 
-  let students = extract_to_students(positionals[0]);
-
-  if (values.dedupe) {
-    students = await dedupe(students);
+  if (a_k < b_k) {
+    return -1;
   }
 
-//  console.log(JSON.stringify(students, null, 2));
+  if (a_k > b_k) {
+    return 1;
+  }
 
-  const doc = new jsPDF({
-    orientation: "portrait",
+  return 0;
+}
+
+function renderStudents(raw_csv) {
+  const students = extract_to_students(raw_csv);
+  const groups = group_students(students);
+  const student_table = document.getElementById('student_table');
+  const by_teacher = Object.entries(groups.by_teacher);
+
+  by_teacher.sort(by_teacher_comparator);
+
+  render(by_teacher.map(([k,v]) => {
+      // TODO: This sorts global data structrure... do we care?
+      v.sort((a,b) => (a.student_name > b.student_name) ? 1 : ((b.student_name > a.student_name) ? -1 : 0));
+
+      return (html`
+          <section class="teacher-card">
+            <h2 class="teacher">${v[0].teacher} - Grade ${v[0].grade}</h2>
+            <article class="classlist">
+              ${v.map(student => {
+                  if (student.in_dragon_directory) {
+                      return (html`
+                          <header>${student.student_name}</header>
+                          ${student.parents.map(p => html`
+                              <article class="parent-info">
+                                  <div class="name">${p.parent_name}</div>
+                                  <div class="phone"><a href="tel:${p.phone}">${p.phone}</a></div>
+                                  <div class="email"><a href="mailto:${p.email}">${p.email}</a></div>
+                              <//>
+                            `)}
+                          ${student.neighborhood_school && html`<div class="nh-school"><h3>Neighborhood School</h3> ${student.neighborhood_school}</div>`}
+                          ${student.bus_route && html`<div class="nh-bus"><h3>Bus Route</h3> ${student.bus_route}</div>`}
+                      `);
+                   }
+                })
+              }
+            </article>
+          </section>
+      `);
+    }), student_table);
+}
+
+function makePdf(el) {
+  const password = document.getElementById('password').value.trim();
+  const pdfConfig = {
+    orientation: "potrait",
+    unit: "pt",  // pt is correct for HTML since font sizes are points.
     format: 'letter',
-    unit: "in",
-    compress: true,
-  });
-
-  for (const s of students) {
-    console.log({text: s.student_name, x: 1, y: 1});
-    doc.text(s.student_name, 1, 1);
+  };
+  if (password !== '') {
+    pdfConfig.encryption = {
+      userPassword: password,
+      ownerPassword: password,
+      userPermissions: ['print', 'modify', 'copy', 'annot-forms' ]
+    };
   }
 
-  doc.save("output.pdf");
-};
-*/
+  const doc = new jsPDF(pdfConfig);
 
-window.dragonDirectory = { extract_to_students, group_students };
+  doc.html(document.getElementById('student_table'),
+      { callback: doc => doc.save('a.pdf')});
+
+}
+
+export default { renderStudents, makePdf };

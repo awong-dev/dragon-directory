@@ -1,0 +1,15 @@
+.teacher {
+    color: red;
+    background-color: turquoise;
+    font-size: xx-large;
+    padding-left: 2em;
+    padding-bottom: 1ex;
+    padding-top: 0.5ex;
+    margin-bottom: 0;
+}
+
+.classlist {
+    background: #ffc3c3;
+    padding: 1ex;
+    font-size: 14pt;
+}

@@ -2,114 +2,24 @@
 <html>
 <head>
 <title>Dragon Directory Maker</title>
-<style>
-.teacher {
-    color: red;
-    background-color: turquoise;
-    font-size: xx-large;
-    padding-left: 2em;
-    padding-bottom: 1ex;
-    padding-top: 0.5ex;
-    margin-bottom: 0;
-}
-.classlist {
-    background: #ffc3c3;
-    padding: 1ex;
-    font-size: 14pt;
-}
-</style>
-<script type="module" src="dragon-directory.js"></script>
+<link rel="stylesheet" href="dragon-directory.css">
 <script type="module">
-  import jsPDF from 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/+esm';
-
-  function renderStudents(raw_csv) {
-    const students = dragonDirectory.extract_to_students(raw_csv);
-    const groups = dragonDirectory.group_students(students);
-    const output_table = document.getElementById('student_table');
-    const by_teacher = Object.entries(groups.by_teacher)
-    by_teacher.sort(([a_k,a_v],[b_k,b_v]) => {
-      if (a_v[0].grade < b_v[0].grade) {
-        return -1;
-      }
-      if (a_v[0].grade > b_v[0].grade) {
-        return 1;
-      }
-
-      if (a_k < b_k) {
-        return -1;
-      }
-
-      if (a_k > b_k) {
-        return 1;
-      }
-
-      return 0;
-    })
-    for (const [k,v] of by_teacher) {
-      const g_el = document.createElement('section');
-
-      // Add group header.
-      const h2 = document.createElement('h2');
-      h2.className = 'teacher';
-      h2.innerText = `${v[0].teacher} - Grade ${v[0].grade}`;
-      g_el.appendChild(h2);
-
-      const section_el = document.createElement('section');
-      section_el.className = 'classlist';
-      g_el.appendChild(section_el);
-      // Add students header.
-      v.sort((a,b) => (a.student_name > b.student_name) ? 1 : ((b.student_name > a.student_name) ? -1 : 0))
-      for (const s of v) {
-        if (s.in_dragon_directory) {
-          for (const p of s.parents) {
-            const parent_el = document.createElement('p');
-            parent_el.innerText = `${s.student_name} - ${p.parent_name} / ${p.email} / ${p.phone}`;
-            section_el.appendChild(parent_el);
-          }
-        }
-      }
-
-      output_table.appendChild(g_el);
-    }
-  }
-
-  function makePdf(el) {
-    const password = document.getElementById('password').value.trim();
-    const pdfConfig = {
-      orientation: "potrait",
-      unit: "pt",  // pt is correct for HTML since font sizes are points.
-      format: 'letter',
-    };
-    if (password !== '') {
-      pdfConfig.encryption = {
-        userPassword: password,
-        ownerPassword: password,
-        userPermissions: ['print', 'modify', 'copy', 'annot-forms' ]
-      };
-    }
-
-    const doc = new jsPDF(pdfConfig);
-
-    doc.html(document.getElementById('student_table'),
-        { callback: doc => doc.save('a.pdf')});
-
-  }
+  import dragonDirectory from './dragon-directory.js';
 
   addEventListener("load", (event) => {
     document.getElementById('csv').addEventListener('change', function(e) {
       if (e.target.files[0]) {
         const reader = new FileReader();
         reader.addEventListener("load",
-            () => renderStudents(reader.result),
+            () => dragonDirectory.renderStudents(reader.result),
             false
         );
         reader.readAsText(e.target.files[0]);
       }
     });
 
-    document.getElementById('makepdf').addEventListener('click', makePdf);
+    document.getElementById('makepdf').addEventListener('click', dragonDirectory.makePdf);
   });
-
 </script>
 </head>
 <body>
