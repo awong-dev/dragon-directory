@@ -3,13 +3,19 @@
     margin: auto;
 }
 
-.teacher-card {
-  background-color: grey;
-  padding: 2ex;
-  margin-bottom: 2ex;
+.directory-container {
+    max-width: 1024px;
+    margin: auto;
+    border-style: dashed;
 }
 
-header.teacher  {
+.teacher-card {
+    background-color: grey;
+    padding: 2ex;
+    margin-bottom: 2ex;
+}
+
+.teacher  {
     color: black;
     font-size: 18pt;
     font-family: Avantgarde, TeX Gyre Adventor, URW Gothic L, sans-serif;
