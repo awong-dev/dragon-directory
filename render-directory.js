@@ -43,16 +43,20 @@ function normalizeText(value) {
 // concepts used for constructing a Student object.
 function makeFieldMapping(columnInfo) {
   const fieldMapping = {
-      date_updated: fieldIdForLabel(columnInfo, 'meta:date_updated'),
-      date_created: fieldIdForLabel(columnInfo, 'meta:date_created'),
       bus_route: fieldIdForLabel(columnInfo, 'Bus Route'),
       neighborhood_school: fieldIdForLabel(columnInfo, 'Neighborhood School'),
 
       students: [],
       parents: [],
+
+      // These are synthetic fields insred in the PHP side with an artificial
+      // label header 'meta:' to distinguish.
+      date_updated: fieldIdForLabel(columnInfo, 'meta:date_updated'),
+      date_created: fieldIdForLabel(columnInfo, 'meta:date_created'),
+      entry_id: fieldIdForLabel(columnInfo, 'meta:entry_id'),
   };
 
-  for (const i = 1; i <= 4; i++) {
+  for (let i = 1; i <= 4; i++) {
     fieldMapping.students.push({
       name_inputs: inputsForLabel(columnInfo, `Student #${i} Name`),
       grade: fieldIdForLabel(columnInfo, `Student #${i} Grade Level`),
@@ -113,17 +117,28 @@ function rowToStudents(row, fieldMapping) {
   const parents = rowToParents(row, fieldMapping);
   const students = [];
 
-  const neighborhood_school = normalizeText(row[fieldMapping.neibhorhood_school]);
+  const neighborhood_school = normalizeText(row[fieldMapping.neighborhood_school]);
   const bus_route = normalizeText(row[fieldMapping.bus_route]);
-  const date_updated = new Date(row[fieldMapping.date_updated]);
+  const entry_id = normalizeText(row[fieldMapping.entry_id]);
   const date_created = new Date(row[fieldMapping.date_created]);
+  const date_updated = new Date(row[fieldMapping.date_updated]);
 
   for (const student_field of fieldMapping.students) {
     const student_name = Object.keys(student_field.name_inputs).map(input_id => row[input_id]).join(' ').trim();
     if (student_name) {
       const grade = normalizeText(row[student_field.grade]);
       const teacher = normalizeText(row[student_field.teacher]);
-      students.push({ student_name, grade, teacher, neighborhood_school, bus_route, date_updated, parents });
+      students.push({
+          student_name,
+          grade,
+          teacher,
+          neighborhood_school,
+          bus_route,
+          parents,
+          entry_id,
+          date_created,
+          date_updated,
+          });
     }
   }
 
@@ -248,28 +263,57 @@ function by_teacher_comparator([a_k,a_v], [b_k,b_v]) {
   return 0;
 }
 
-const Controls = () => html`<nav>Nav bar</nav>`;
+function Controls() {
+  return html`
+    <nav class="directory-control">
+      <span>Group by: </span>
+      <span>
+        <a href="#teacher">Teacher</a> |
+        <a href="#neighborhood_school">Neighborhood School</a> |
+        <a href="$bus_route">Bus Route</a> 
+      </span>
+    </nav>
+  `;
+}
+
 const StudentInfo = ({student_info}) => {
   return html`
     <div class="student-info">
       ${student_info.parents.map(p => html`
           <div class="parent-info">
-              <div class="name">${p.parent_name}<//>
-              <div class="phone"><a href="tel:${p.phone}">${p.phone}</a><//>
-              <div class="email"><a href="mailto:${p.email}">${p.email}</a><//>
+            <div class="name">${p.parent_name}<//>
+            <div class="phone"><a href="tel:${p.phone}">${p.phone}</a><//>
+            <div class="email"><a href="mailto:${p.email}">${p.email}</a><//>
           <//>
       `)}
+      ${student_info.neighborhood_school && html`
+          <div class="nh-school-info">
+            <div>Neighborhood School</div>
+            <div>${student_info.neighborhood_school}</div>
+          </div>
+      `}
+      ${student_info.bus_route && html`
+          <div class="bus-info">
+            <div>Bus Route</div>
+            <div>${student_info.bus_route}</div>
+          </div>
+      `}
     <//>
   `;
 };
 
 const StudentTable = ({students}) => {
-    return html`<table>
-        ${Object.entries(students).map(([student_name, student_info]) => (
-            html`<tr><td>${student_name}</td><td><${StudentInfo} student_info=${student_info} /></td>
-            </tr>`
-        ))}
-        </table>
+    return html`
+        <main class="student-table">
+          <ul class="student-list">
+            ${Object.entries(students).map(([student_name, student_info]) => (html`
+              <li class="student-entry" data-updated="${student_info.date_updated.toISOString()}" data-entry-id="${student_info.entry_id}">
+                  <header>${student_name}</header>
+                  <${StudentInfo} student_info=${student_info} />
+              <//>`
+            ))}
+          </ul>
+        <//>
     `;
 };
 
@@ -298,8 +342,11 @@ function renderStudents(target_element, column_info, rows) {
   const fieldMapping = makeFieldMapping(column_info);
   for (const row of rows) {
     for (const s of rowToStudents(row, fieldMapping)) {
-      // TODO: Only update if row is newer.
-      students[s.student_name] = s;
+      // Let newer entries for a student overwrite older ones.
+      if (!students.hasOwnProperty(s.student_name) ||
+           students[s.student_name].date_updated < s.date_updated) {
+        students[s.student_name] = s;
+      }
     }
   }
   window.students = students;

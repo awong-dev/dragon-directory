@@ -1,6 +1,10 @@
-#student_table {
-    max-width: 1024px;
-    margin: auto;
+.directory-control {
+    background-color: lightgrey;
+    padding: 0.5ex 1ex 0.5ex 1ex;
+}
+
+.directory-control a {
+    padding-left: 1ex;
 }
 
 .directory-container {
@@ -22,11 +26,15 @@
     font-weight: bold;
 }
 
-.classlist {
+.student-table {
+    padding: 0ex;
+}
+
+.student-list {
     background: #cdcdcd;
     font-size: 12pt;
     list-style-type: none;
-    padding: .5ex;
+    padding: 0ex .5ex 0ex .5ex;
 }
 
 .student-entry {
