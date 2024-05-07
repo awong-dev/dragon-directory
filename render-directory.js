@@ -73,12 +73,12 @@ function extract_parents(record) {
   return parents;
 }
 
-function unspecifiedToEmpty(value) {
-   if (value === "Unspecified") {
+function normalizeText(value) {
+   if (!value || value.trim() === "Unspecified") {
      return "";
    }
 
-   return value;
+   return value.trim();
 }
 
 // A record can contain up to 4 student information sets.
@@ -148,6 +148,113 @@ function record_to_students(record) {
   }
 
   return students;
+}
+
+// Using the fieldMapping which lists the `field_id` index `row` that
+// Returns an array of objects parents in the row.
+//
+// Example return:
+//  [
+//     { parent_name: "Some Parent", email: "an@email.com", phone: "123-456-7890" },
+//     ...
+//  ]
+function rowToParents(row, fieldMapping) {
+  const parents = [];
+  for (const parent_fields of fieldMapping.parents) {
+    const parent_name = Object.keys(parent_fields.name_inputs).map(input_id => row[input_id]).join(' ').trim();
+    if (parent_name) {
+      const phone = normalizeText(row[parent_fields.phone]);
+      const email = normalizeText(row[parent_fields.email]);
+      parents.push({parent_name, email, phone});
+    }
+  }
+  return parents;
+}
+
+// Returns an array of objects representing each student in the row.
+//
+// Example return:
+// [
+//   {
+//     student_name: "Some Name",
+//     neighborhood_school: "Some School",
+//     bus_route: "123",
+//     grade: 3,
+//     teacher: "Teacher Name",
+//     date_created: [date object],
+//     date_updated: [date object],
+//     parents: [
+//        { parent_name: "Some Parent", email: "an@email.com", phone: "123-456-7890" },
+//        ...
+//     ]
+//   },
+//   ...
+// ]
+function rowToStudents(row, fieldMapping) {
+  const parents = rowToParents(row, fieldMapping);
+  const students = [];
+
+  const neighborhood_school = normalizeText(row[fieldMapping.neibhorhood_school]);
+  const bus_route = normalizeText(row[fieldMapping.bus_route]);
+  const date_updated = new Date(row[fieldMapping.date_updated]);
+  const date_created = new Date(row[fieldMapping.date_created]);
+
+  for (const student_field of fieldMapping.students) {
+    const student_name = Object.keys(student_field.name_inputs).map(input_id => row[input_id]).join(' ').trim();
+    if (student_name) {
+      const grade = normalizeText(row[student_field.grade]);
+      const teacher = normalizeText(row[student_field.teacher]);
+      students.push({ student_name, grade, teacher, neighborhood_school, bus_route, date_updated, parents });
+    }
+  }
+
+  return students;
+}
+
+function fieldIdForLabel(columnInfo, label) {
+  for (const [fieldId, info] of Object.entries(columnInfo)) {
+    if (info.label === label) {
+      return fieldId;
+    }
+  }
+
+  return -1;
+}
+
+function inputsForLabel(columnInfo, label) {
+  for (const [fieldId, info] of Object.entries(columnInfo)) {
+    if (info.label === label && info.hasOwnProperty('inputs')) {
+      return info['inputs'];
+    }
+  }
+
+  return [];
+}
+
+function makeFieldMapping(columnInfo) {
+  const fieldMapping = {
+      date_updated: fieldIdForLabel(columnInfo, 'meta:date_updated'),
+      date_created: fieldIdForLabel(columnInfo, 'meta:date_created'),
+      bus_route: fieldIdForLabel(columnInfo, 'Bus Route'),
+      neighborhood_school: fieldIdForLabel(columnInfo, 'Neighborhood School'),
+
+      students: [],
+      parents: [],
+  };
+  for (let i = 1; i <= 4; i++) {
+    fieldMapping.students.push({
+      name_inputs: inputsForLabel(columnInfo, `Student #${i} Name`),
+      grade: fieldIdForLabel(columnInfo, `Student #${i} Grade Level`),
+      teacher: fieldIdForLabel(columnInfo, `Student #${i} Teacher`),
+    });
+
+    fieldMapping.parents.push({
+      name_inputs: inputsForLabel(columnInfo, `Parent / Guardian #${i} Name`),
+      email: fieldIdForLabel(columnInfo, `Parent / Guardian #${i} Email`),
+      phone: fieldIdForLabel(columnInfo, `Parent / Guardian #${i} Phone`),
+    });
+  }
+  return fieldMapping;
 }
 
 // Takes a csv file and returns an array of student objects.
@@ -304,7 +411,6 @@ function renderStudentsOld(target_element, column_info, rows) {
 }
 
 function renderField(id, info, row) {
-  console.log(id, info);
     if (info.hasOwnProperty['inputs']) {
       // Complex field. Should format differently between Names and addresses
       // but until someone has addresses, not bothering.
@@ -329,17 +435,29 @@ function renderCell(id, info, row) {
 
 
 const Controls = () => html`<nav>Nav bar</nav>`;
-const StudentTable = ({column_info, rows}) => {
-    const column_entries = Object.entries(column_info);
+const StudentInfo = ({student_info}) => {
+  return html`
+    <div class="student-info">
+      ${student_info.parents.map(p => html`
+          <div class="parent-info">
+              <div class="name">${p.parent_name}<//>
+              <div class="phone"><a href="tel:${p.phone}">${p.phone}</a><//>
+              <div class="email"><a href="mailto:${p.email}">${p.email}</a><//>
+          <//>
+      `)}
+    <//>
+  `;
+};
+
+const StudentTable = ({students}) => {
     return html`<table>
-        ${rows.map(r => (
-            html`<tr>${column_entries.map(([id, info]) => renderCell(id, info, r))}
+        ${Object.entries(students).map(([student_name, student_info]) => (
+            html`<tr><td>${student_name}</td><td><${StudentInfo} student_info=${student_info} /></td>
             </tr>`
         ))}
         </table>
     `;
-
-}
+};
 
 // Top level app container. Holds state.
 class App extends Component {
@@ -349,11 +467,11 @@ class App extends Component {
         this.state = { sort: 'teacher' };
     }
 
-    render(props, state) {
+    render({students}, state) {
         return html`
             <div class="directory-container">
                 <${Controls} />
-                <${StudentTable} column_info=${props.column_info} rows=${props.rows} />
+                <${StudentTable} students=${students} />
             </div>
         `;
     }
@@ -361,7 +479,18 @@ class App extends Component {
 
 function renderStudents(target_element, column_info, rows) {
   target_element.innerHTML = '';
-  render(html`<${App} column_info=${column_info} rows=${rows} />`, target_element);
+  const students = {};
+
+  const fieldMapping = makeFieldMapping(column_info);
+  for (const row of rows) {
+    for (const s of rowToStudents(row, fieldMapping)) {
+      // TODO: Only update if row is newer.
+      students[s.student_name] = s;
+    }
+  }
+  window.students = students;
+
+  render(html`<${App} students=${students} />`, target_element);
 }
 
 export { renderStudents };
