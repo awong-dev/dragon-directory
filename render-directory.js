@@ -352,6 +352,16 @@ function StudentTable({student_list}) {
     `;
 }
 
+function strcmp(a,b) {
+  if (a === b) {
+    return 0;
+  }
+  if (a > b) {
+    return 1;
+  }
+  return -1;
+}
+
 function GroupedList({students, groupBy}) {
   const grouped = groupStudents(students, groupBy);
 
@@ -360,7 +370,7 @@ function GroupedList({students, groupBy}) {
       ${grouped.map(([group_name, student_list]) => html`
           <section class="group-card">
             <header>${group_name}</header>
-            <${StudentTable} student_list=${student_list} />
+            <${StudentTable} student_list=${student_list.sort((a,b) => strcmp(a.student_name, b.student_name))} />
           <//>
         `)
       }
