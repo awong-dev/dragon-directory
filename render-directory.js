@@ -19,138 +19,57 @@
 
 import { html, render, Component } from 'https://unpkg.com/htm/preact/standalone.module.js'
 
-// A record can contain up to 4 parent/guardian information sets.
-//
-// The entry for parents is structured as follows:
-//  "Parent / Guardian #1 Name (Prefix)"
-//  "Parent / Guardian #1 Name (First)"
-//  "Parent / Guardian #1 Name (Middle)"
-//  "Parent / Guardian #1 Name (Last)"
-//  "Parent / Guardian #1 Name (Suffix)"
-//  "Parent / Guardian #1 Email"
-//  "Parent / Guardian #1 Phone"
-//  "Interest in Volunteering?"
-//  "Are you interested in officially joining the PTA at a voting member?"
-//  "Can we include your email in the classroom email list?"
-//
-// Return an array of objects with the structure
-// {
-//   parent_name: "",
-//   email: "",
-//   phone: "",
-//   in_room_list: true,
-//   volunteer_interest: true,
-//   pta_interest: true,
-//   orig_entry_id: ""
-//   orig_entry_date: ""
-// }
-function extract_parents(record) {
-  const parents = [];
-
-  const in_room_list = record['Can we include your email in the classroom email list?'].trim() === 'Yes';
-  const volunteer_interest = record['Interest in Volunteering?'].trim();
-  const pta_interest = record['Are you interested in officially joining the PTA at a voting member?'].trim();
-  const in_dragon_directory = record['Include your family in the Dragon Directory?'].trim() === 'Yes';
-  const orig_entry_id = record['Entry Id'].trim();
-  const orig_entry_date = new Date(record['Entry Date'].trim());
-
-  for (let i = 1; i <= 4; i++) {
-    const parent_name = [
-      record[`Parent / Guardian #${i} Name (Prefix)`],
-      record[`Parent / Guardian #${i} Name (First)`],
-      record[`Parent / Guardian #${i} Name (Middle)`],
-      record[`Parent / Guardian #${i} Name (Last)`],
-      record[`Parent / Guardian #${i} Name (Suffix)`],
-    ].filter((x) => x.trim() !== "").join(' ').trim();
-      const email = record[`Parent / Guardian #${i} Email`].trim();
-      const phone = record[`Parent / Guardian #${i} Phone`].trim();
-
-      if (parent_name !== "") {
-        parents.push({ parent_name, email, phone, in_room_list, volunteer_interest, pta_interest, in_dragon_directory, orig_entry_id, orig_entry_date });
-      }
-  }
-
-  return parents;
-}
-
+// Ensures returned text is trimmed and things like missing fileds
+// or "Unspecified" comes back as an emptry string.
 function normalizeText(value) {
-   if (!value || value.trim() === "Unspecified") {
+   if (!value) {
      return "";
    }
 
-   return value.trim();
+   const trimmed = value.trim();
+   if (trimmed === "Unspecified") {
+     return "";
+   }
+
+   return trimmed;
 }
 
-// A record can contain up to 4 student information sets.
+// Takes the `columnInfo` given to `renderStudents()` and produces
+// an object whose keys maps to the fieldIds corresponding to the information
+// the key wants.  These fieldIds can then be used with the `rows` in
+// `renderStudents()` to retrieve that wanted data.
 //
-// The entries for students is is structured as follows:
-//  "Student #1 Name (Prefix)"
-//  "Student #1 Name (First)"
-//  "Student #1 Name (Middle)"
-//  "Student #1 Name (Last)"
-//  "Student #1 Name (Suffix)"
-//  "Student #1 Grade Level"
-//  "Student #1 Teacher"
-//  "Include your family in the Dragon Directory?"
-//  "Neighborhood School"
-//  "Bus Route"
-//  "Entry Id"
-//  "Entry Date"
-//
-// This function will return an array of student objects WITHOUT the parent field.
-// It will be structured as follows
-// {
-//   student_name: "",
-//   grade: 1,
-//   teacher: "",
-//   parents: [{name:"", email: "", phone: ""}],
-//   neighborhood_school: "",
-//   bus_route: 1,
-//   in_dragon_directory: true,
-//   orig_entry_id: ""
-//   orig_entry_date: ""
-// }
-function extract_students(record) {
-  const students = [];
+// This object is basically the projection of columnInfo into the semantic
+// concepts used for constructing a Student object.
+function makeFieldMapping(columnInfo) {
+  const fieldMapping = {
+      date_updated: fieldIdForLabel(columnInfo, 'meta:date_updated'),
+      date_created: fieldIdForLabel(columnInfo, 'meta:date_created'),
+      bus_route: fieldIdForLabel(columnInfo, 'Bus Route'),
+      neighborhood_school: fieldIdForLabel(columnInfo, 'Neighborhood School'),
 
-  const neighborhood_school = unspecifiedToEmpty(record['Neighborhood School'].trim());
-  const bus_route = unspecifiedToEmpty(record['Bus Route'].trim());
+      students: [],
+      parents: [],
+  };
 
-  const in_dragon_directory = record['Include your family in the Dragon Directory?'].trim() === 'Yes';
-  const orig_entry_id = record['Entry Id'].trim();
-  const orig_entry_date = new Date(record['Entry Date'].trim());
+  for (const i = 1; i <= 4; i++) {
+    fieldMapping.students.push({
+      name_inputs: inputsForLabel(columnInfo, `Student #${i} Name`),
+      grade: fieldIdForLabel(columnInfo, `Student #${i} Grade Level`),
+      teacher: fieldIdForLabel(columnInfo, `Student #${i} Teacher`),
+    });
 
-  for (let i = 1; i <= 4; i++) {
-    const student_name = [
-      record[`Student #${i} Name (Prefix)`],
-      record[`Student #${i} Name (First)`],
-      record[`Student #${i} Name (Middle)`],
-      record[`Student #${i} Name (Last)`],
-      record[`Student #${i} Name (Suffix)`],
-    ].filter((x) => x.trim() !== "").join(' ').trim();
-      const grade = record[`Student #${i} Grade Level`].trim();
-      const teacher = record[`Student #${i} Teacher`].trim();
-      if (student_name !== "") {
-        students.push({ student_name, grade, teacher, neighborhood_school, bus_route, in_dragon_directory, orig_entry_date, orig_entry_date  });
-      }
+    fieldMapping.parents.push({
+      name_inputs: inputsForLabel(columnInfo, `Parent / Guardian #${i} Name`),
+      email: fieldIdForLabel(columnInfo, `Parent / Guardian #${i} Email`),
+      phone: fieldIdForLabel(columnInfo, `Parent / Guardian #${i} Phone`),
+    });
   }
 
-  return students;
+  return fieldMapping;
 }
 
-// Turns record into an array of student objects.
-function record_to_students(record) {
-  const parents = extract_parents(record);
-  const students = extract_students(record);
-
-  for (const s of students) {
-    s.parents = parents;
-  }
-
-  return students;
-}
-
-// Using the fieldMapping which lists the `field_id` index `row` that
+// Using the fieldMapping which lists the `fieldId` index `row` that
 // Returns an array of objects parents in the row.
 //
 // Example return:
@@ -211,6 +130,10 @@ function rowToStudents(row, fieldMapping) {
   return students;
 }
 
+// Helper function to extract the fieldId from columnInfo that matches
+// the given label.
+//
+// Returns -1 on error which will not match any fields.
 function fieldIdForLabel(columnInfo, label) {
   for (const [fieldId, info] of Object.entries(columnInfo)) {
     if (info.label === label) {
@@ -221,6 +144,12 @@ function fieldIdForLabel(columnInfo, label) {
   return -1;
 }
 
+// Helper function to extract an array of fieldIds from columnInfo that matches
+// the set of inputs for a given label. This is used for `name` and `address`
+// fields where the top-level field_id does not exist in rows. You have to
+// compose the content out of all the `inputs`.
+//
+// Returns -1 on error which will not match any fields.
 function inputsForLabel(columnInfo, label) {
   for (const [fieldId, info] of Object.entries(columnInfo)) {
     if (info.label === label && info.hasOwnProperty('inputs')) {
@@ -229,55 +158,6 @@ function inputsForLabel(columnInfo, label) {
   }
 
   return [];
-}
-
-function makeFieldMapping(columnInfo) {
-  const fieldMapping = {
-      date_updated: fieldIdForLabel(columnInfo, 'meta:date_updated'),
-      date_created: fieldIdForLabel(columnInfo, 'meta:date_created'),
-      bus_route: fieldIdForLabel(columnInfo, 'Bus Route'),
-      neighborhood_school: fieldIdForLabel(columnInfo, 'Neighborhood School'),
-
-      students: [],
-      parents: [],
-  };
-  for (let i = 1; i <= 4; i++) {
-    fieldMapping.students.push({
-      name_inputs: inputsForLabel(columnInfo, `Student #${i} Name`),
-      grade: fieldIdForLabel(columnInfo, `Student #${i} Grade Level`),
-      teacher: fieldIdForLabel(columnInfo, `Student #${i} Teacher`),
-    });
-
-    fieldMapping.parents.push({
-      name_inputs: inputsForLabel(columnInfo, `Parent / Guardian #${i} Name`),
-      email: fieldIdForLabel(columnInfo, `Parent / Guardian #${i} Email`),
-      phone: fieldIdForLabel(columnInfo, `Parent / Guardian #${i} Phone`),
-    });
-  }
-  return fieldMapping;
-}
-
-// Takes a csv file and returns an array of student objects.
-// Note that there may be duplicates.
-// grouped by bus route, by teacher, and by neighborhood school.
-function extract_to_students(raw_csv) {
-  // Gravity forms has a random codepoint before the BOM. Strip it out.
-  // TODO: Test to ensure it's not a quote or a bom.  Frankly, we should eat until the first quote.
-  raw_csv = raw_csv.slice(1);
-
-  // Parse the CSV into records.
-  const records = parse(raw_csv, {
-    bom: true,
-    columns: true,
-    skip_empty_lines: true
-  });
-
-  const students = [];
-  for (const r of records) {
-    students.push(...record_to_students(r));
-  }
-
-  return students;
 }
 
 // Returns students grouped by bus;
@@ -367,72 +247,6 @@ function by_teacher_comparator([a_k,a_v], [b_k,b_v]) {
 
   return 0;
 }
-
-function renderStudentsOld(target_element, column_info, rows) {
-  const students = extract_to_students(raw_csv);
-  const groups = group_students(students);
-  const by_teacher = Object.entries(groups.by_teacher);
-
-  by_teacher.sort(by_teacher_comparator);
-
-  render(by_teacher.map(([k,v]) => {
-      // TODO: This sorts global data structrure... do we care?
-      v.sort((a,b) => (a.student_name > b.student_name) ? 1 : ((b.student_name > a.student_name) ? -1 : 0));
-
-      return (html`
-          <section class="teacher-card">
-            <header class="teacher">${v[0].teacher} - Grade ${v[0].grade}</header>
-            <ul class="classlist">
-              ${v.map(student => {
-                  if (student.in_dragon_directory) {
-                      return (html`
-                          <li class="student-entry">
-                              <header>${student.student_name}</header>
-                              <div class="student-info">
-                                  ${student.parents.map(p => html`
-                                      <div class="parent-info">
-                                          <div class="name">${p.parent_name}</div>
-                                          <div class="phone"><a href="tel:${p.phone}">${p.phone}</a></div>
-                                          <div class="email"><a href="mailto:${p.email}">${p.email}</a></div>
-                                      <//>
-                                    `)}
-                                  ${student.neighborhood_school && html`<div class="nh-school-info"><div>Neighborhood School</div> ${student.neighborhood_school}</div>`}
-                                  ${student.bus_route && html`<div class="bus-info"><div>Bus Route</div> ${student.bus_route}</div>`}
-                              </div>
-                          </li>
-                      `);
-                   }
-                })
-              }
-            </ul>
-          </section>
-      `);
-    }), target_element);
-}
-
-function renderField(id, info, row) {
-    if (info.hasOwnProperty['inputs']) {
-      // Complex field. Should format differently between Names and addresses
-      // but until someone has addresses, not bothering.
-      return Object.keys(info['inputs']).map(v => row[v['id']]).join(' ');
-    }
-
-    // Fields without 'inputs' are directly stored in the row.
-    if (row[id]) {
-      return row[id];
-    }
-    return '';
-}
-
-function renderCell(id, info, row) {
-    const field = renderField(id, info, row);
-    if (field) {
-        return html`<td>${field}</td>`;
-    }
-
-    return '';
-}
-
 
 const Controls = () => html`<nav>Nav bar</nav>`;
 const StudentInfo = ({student_info}) => {
