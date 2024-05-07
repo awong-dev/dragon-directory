@@ -17,7 +17,20 @@
 // this JS file directly. The simplicity (including not using minification)
 // makes it easier for future folks to debug and maintain.
 
-import { html, render, Component } from 'https://unpkg.com/htm/preact/standalone.module.js'
+import { html, render, Component, useState } from 'https://unpkg.com/htm/preact/standalone.module.js'
+
+// Parse the fragment into query parameters.
+function parseFragment() {
+  const params = {};
+  if (window.location.hash) {
+    const fragment = window.location.hash.slice(1);
+    for (const keyValue of fragment.split('&')) {
+      const [key, value] = keyValue.split('=');
+      params[key] = value;
+    }
+  }
+  return params;
+}
 
 // Ensures returned text is trimmed and things like missing fileds
 // or "Unspecified" comes back as an emptry string.
@@ -176,45 +189,45 @@ function inputsForLabel(columnInfo, label) {
 }
 
 // Returns students grouped by bus;
-function group_by_bus(students) {
+function groupByBus(students) {
   const results = {};
 
-  for (const s of students) {
-    const bus_route = s.bus_route || 'No Bus';
+  for (const info of Object.values(students)) {
+    const bus_route = info.bus_route || 'No Bus';
     if (results.hasOwnProperty(bus_route)) {
-      results[bus_route].push(s);
+      results[bus_route].push(info);
     } else {
-      results[bus_route] = [ s ];
+      results[bus_route] = [ info ];
     }
   }
 
-  return results;
+  return Object.entries(results).sort(byGroupNameOrdering);
 }
 
 // Returns students grouped by neighborhood school.
-function group_by_school(students) {
+function groupBySchool(students) {
   const results = {};
 
-  for (const s of students) {
-    const school = s.neighborhood_school || 'Unknown School';
+  for (const info of Object.values(students)) {
+    const school = info.neighborhood_school || 'Unknown School';
     if (results.hasOwnProperty(school)) {
-      results[school].push(s);
+      results[school].push(info);
     } else {
-      results[school] = [ s ];
+      results[school] = [ info ];
     }
   }
 
-  return results;
+  return Object.entries(results).sort(byGroupNameOrdering);
 }
 
 // Returns students grouped by teacher. The object key
 // is the teacher last name, first name, and grade.
-function group_by_teacher(students) {
-  const results = {};
+function groupByTeacher(students) {
+  const grouped = {};
 
-  for (const s of students) {
+  for (const info of Object.values(students)) {
     // Sort by last-name first.
-    const teacher_sort_key = s.teacher.split(' ').map(x => x.trim()).filter(x => x !== '');
+    const teacher_sort_key = info.teacher.split(' ').map(x => x.trim()).filter(x => x !== '');
 
     if (teacher_sort_key.length === 0) {
       teacher_sort_key.push('Unknown Teacher');
@@ -223,60 +236,81 @@ function group_by_teacher(students) {
       teacher_sort_key.unshift(last_name);
     }
 
-    teacher_sort_key.push(s.grade || 'Unknown Grade');
+    teacher_sort_key.push(info.grade || 'Unknown Grade');
 
-    if (results.hasOwnProperty(teacher_sort_key)) {
-      results[teacher_sort_key].push(s);
+    if (grouped.hasOwnProperty(teacher_sort_key)) {
+      grouped[teacher_sort_key].push(info);
     } else {
-      results[teacher_sort_key] = [ s ];
+      grouped[teacher_sort_key] = [ info ];
     }
   }
 
-  return results;
+  return Object.entries(grouped)
+      .sort(byTeacherOrdering)
+      .map(([_, students]) =>
+          [`${students[0].teacher} - Grade ${students[0].grade}`,
+           students]);
 }
 
 // Returns an object with students grouped by bus, school, and teacher.
-function group_students(students) {
-  const by_bus = group_by_bus(students);
-  const by_school = group_by_school(students);
-  const by_teacher = group_by_teacher(students);
+function groupStudents(students, groupBy) {
+  if (groupBy === "neighborhood_school") {
+    return groupBySchool(students);
+  } else if (groupBy === "bus_route") {
+    return  groupByBus(students);
+  }
 
-  return { by_teacher, by_bus, by_school };
+  // Default to teacher sort.
+  return groupByTeacher(students);
 }
 
-function by_teacher_comparator([a_k,a_v], [b_k,b_v]) {
-  if (a_v[0].grade < b_v[0].grade) {
+function byGroupNameOrdering([a_group,_1],[b_group,_2]) {
+  if (a_group == b_group) {
+    return 0;
+  } else if (a_group < b_group) {
     return -1;
   }
-  if (a_v[0].grade > b_v[0].grade) {
+  return 1;
+}
+
+// Sort order of teacher cards. Teachers are grouped by grade and then
+// listed in alphabetical order.
+function byTeacherOrdering([a_teacher,a_students], [b_teacher,b_students]) {
+  // Just examine the first student to find the grade.
+  if (a_students[0].grade < b_students[0].grade) {
+    return -1;
+  }
+  if (a_students[0].grade > b_students[0].grade) {
     return 1;
   }
 
-  if (a_k < b_k) {
+  if (a_teacher < b_teacher) {
     return -1;
   }
 
-  if (a_k > b_k) {
+  if (a_teacher > b_teacher) {
     return 1;
   }
 
   return 0;
 }
 
-function Controls() {
+// Renders navigation controls.
+function Controls({handleClick}) {
   return html`
     <nav class="directory-control">
       <span>Group by: </span>
       <span>
-        <a href="#teacher">Teacher</a> |
-        <a href="#neighborhood_school">Neighborhood School</a> |
-        <a href="$bus_route">Bus Route</a> 
+        <a href="#groupby=teacher" onclick=${()=>handleClick("teacher")}>Teacher</a> |
+        <a href="#groupby=neighborhood_school" onclick=${()=>handleClick("neighborhood_school")}>Neighborhood School</a> |
+        <a href="#groupby=bus_route" onclick=${()=>handleClick("bus_route")}>Bus Route</a> 
       </span>
     </nav>
   `;
 }
 
-const StudentInfo = ({student_info}) => {
+// Renders the information for a student other than the name.
+function StudentInfo({student_info}) {
   return html`
     <div class="student-info">
       ${student_info.parents.map(p => html`
@@ -300,58 +334,70 @@ const StudentInfo = ({student_info}) => {
       `}
     <//>
   `;
-};
+}
 
-const StudentTable = ({students}) => {
+// Renders tne entire table for a student.
+function StudentTable({student_list}) {
     return html`
-        <main class="student-table">
+        <div class="student-table">
           <ul class="student-list">
-            ${Object.entries(students).map(([student_name, student_info]) => (html`
+            ${student_list.map(student_info => (html`
               <li class="student-entry" data-updated="${student_info.date_updated.toISOString()}" data-entry-id="${student_info.entry_id}">
-                  <header>${student_name}</header>
+                  <header>${student_info.student_name}</header>
                   <${StudentInfo} student_info=${student_info} />
               <//>`
             ))}
           </ul>
         <//>
     `;
-};
+}
+
+function GroupedList({students, groupBy}) {
+  const grouped = groupStudents(students, groupBy);
+
+  return html`
+    <div>
+      ${grouped.map(([group_name, student_list]) => html`
+          <section class="group-card">
+            <header>${group_name}</header>
+            <${StudentTable} student_list=${student_list} />
+          <//>
+        `)
+      }
+    <//>
+  `;
+}
 
 // Top level app container. Holds state.
-class App extends Component {
-    state = { sort: 'teacher' };
-    constructor() {
-        super();
-        this.state = { sort: 'teacher' };
-    }
+function Directory({allStudents}) {
+  const fragmentParams = parseFragment();
+  const [groupBy, setGroupBy] = useState(fragmentParams['groupby'] || "teacher");
 
-    render({students}, state) {
-        return html`
-            <div class="directory-container">
-                <${Controls} />
-                <${StudentTable} students=${students} />
-            </div>
-        `;
-    }
-};
+  return html`
+      <div class="directory-container">
+          <${Controls} handleClick=${setGroupBy} />
+          <${GroupedList} students=${allStudents} groupBy=${groupBy} />
+      </div>
+  `;
+}
 
 function renderStudents(target_element, column_info, rows) {
   target_element.innerHTML = '';
-  const students = {};
+  const allStudents = {};
 
   const fieldMapping = makeFieldMapping(column_info);
   for (const row of rows) {
     for (const s of rowToStudents(row, fieldMapping)) {
       // Let newer entries for a student overwrite older ones.
-      if (!students.hasOwnProperty(s.student_name) ||
-           students[s.student_name].date_updated < s.date_updated) {
-        students[s.student_name] = s;
+      if (!allStudents.hasOwnProperty(s.student_name) ||
+           allStudents[s.student_name].date_updated < s.date_updated) {
+        allStudents[s.student_name] = s;
       }
     }
   }
-  window.students = students;
+  window.allStudents = allStudents;
 
-  render(html`<${App} students=${students} />`, target_element);
+  render(html`<${Directory} allStudents=${allStudents} />`, target_element);
 }
 
 export { renderStudents };

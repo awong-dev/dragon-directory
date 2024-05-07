@@ -13,13 +13,13 @@
     border-style: dashed;
 }
 
-.teacher-card {
+.group-card {
     background-color: grey;
     padding: 2ex;
     margin-bottom: 2ex;
 }
 
-.teacher  {
+.group-card header {
     color: black;
     font-size: 18pt;
     font-family: Avantgarde, TeX Gyre Adventor, URW Gothic L, sans-serif;
