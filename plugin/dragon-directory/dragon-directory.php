@@ -7,8 +7,8 @@
 
 namespace DragonDirectory;
 
-define('SETTINGS_GROUP', 'dragondirectory-group');
-define('OPTION_PAGE_SLUG', 'dragondirectory');
+const PLUGIN_NAME = 'dragondirectory';
+const SETTINGS_GROUP = PLUGIN_NAME . '-group';
 
 function options_page_html() {
     // check user capabilities
@@ -18,17 +18,17 @@ function options_page_html() {
 
     ?>
     <div class="wrap">
-            <h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
-            <form action="options.php" method="post">
-                    <?php
-                    // output security fields for the registered setting "wporg_options"
-                    settings_fields(SETTINGS_GROUP);
-                    // output setting sections and their fields
-                    do_settings_sections(OPTION_PAGE_SLUG);
-                    // output save settings button
-                    submit_button(__('Save Settings', 'textdomain'));
-                    ?>
-            </form>
+        <h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
+        <form action="options.php" method="post">
+                <?php
+                // output security fields for the registered setting "wporg_options"
+                settings_fields(SETTINGS_GROUP);
+                // output setting sections and their fields
+                do_settings_sections(PLUGIN_NAME);
+                // output save settings button
+                submit_button(__('Save Settings', 'textdomain'));
+                ?>
+        </form>
     </div>
     <?php
 }
@@ -39,7 +39,7 @@ function dragon_directory_options_page()
         'Dragon Directory Options',
         'Dragon Directory',
         'manage_options',
-        OPTION_PAGE_SLUG,
+        PLUGIN_NAME,
         options_page_html(...),
     );
 }
@@ -55,7 +55,7 @@ function dragon_directory_load() {
 // We need to call the function with the namespace
 add_action( 'plugins_loaded', dragon_directory_load(...));
 
-function field_html($val) {
+function field_html_text($val) {
     $id = $val['id'];
     ?>
         <input
@@ -67,19 +67,58 @@ function field_html($val) {
     <?php
 }
 
-function register_text_setting($id, $description, $default = '', $sanitizer = NULL) {
+function field_html_formid($val) {
+    $id = $val['id'];
+    ?>
+        <input
+            type="number"
+            name="<?= $id ?>"
+            id="<?= $id ?>"
+            min="0"
+            step="1"
+            value="<?= esc_attr( get_option( $id ) ) ?>"
+        />
+    <?php
+}
+
+function field_html_textarea($val) {
+    $id = $val['id'];
+    ?>
+        <textarea
+            name="<?= $id ?>"
+            id="<?= $id ?>"
+        ><?= get_option($id) ?></textarea>
+    <?php
+}
+
+function register_plugin_setting($id, $description, $default = '', $type = 'string', $sanitizer = NULL, $html_func = NULL) {
+
     if ($sanitizer == NULL) {
         $sanitizer = sanitize_text_field(...);
     }
 
+    if ($html_func == NULL) {
+        $html_func = field_html_text(...);
+    }
+
     register_setting(SETTINGS_GROUP, $id,
         array(
-            'type' => 'string',
+            'type' => $type,
             'sanitize_callback' => $sanitizer,
             'default' => $default,
         ));
     add_settings_field($id, $description,
-        field_html(...), OPTION_PAGE_SLUG, 'general', array( 'id' => $id ));
+        $html_func, PLUGIN_NAME, 'general', array( 'id' => $id ));
+}
+
+function sanitize_field_id($input) {
+    $fieldId = (int) $input;
+    if ($fieldId <= 0) {
+        // There should never be form with id -1.
+        return "invalid form id";
+    }
+
+    return $fieldId;
 }
 
 /**
@@ -95,13 +134,15 @@ function register_text_setting($id, $description, $default = '', $sanitizer = NU
  * https://presscoders.com/wordpress-settings-api-explained/
  **/
 function register_my_setting() {
-    add_settings_section('general', 'General', false, OPTION_PAGE_SLUG);
+    add_settings_section('general', 'General', false, PLUGIN_NAME);
 
-    register_text_setting('access_password', 'Access Password', '');
-    register_text_setting('directory_js_url', 'URL of Dragon Directory Renderer', 'a url');
+    register_plugin_setting(PLUGIN_NAME . '_access_password', 'Access Password', 'moo');
     // https://docs.gravityforms.com/searching-and-getting-entries-with-the-gfapi/#search-arguments
-    register_text_setting('where', 'JSON criteria', '');
-    register_text_setting('columns', 'JSON list of columns to export', '');
+    // TODO: This should be an int setting.
+    register_plugin_setting(PLUGIN_NAME . '_form_id', 'Form ID', '', 'integer', sanitize_field_id(...), field_html_formid(...));
+    register_plugin_setting(PLUGIN_NAME . '_select_criteria', 'JSON list of row select criteria', makeDefaultSelectCriteria(), 'text', sanitize_text_field(...), field_html_textarea(...));
+    register_plugin_setting(PLUGIN_NAME . '_exported_columns', 'JSON list of columns to export', makeDefaultExportedColumns(), 'text', sanitize_text_field(...), field_html_textarea(...));
+    error_log("hi: ");
 }
 
 add_action('admin_init', register_my_setting(...));
@@ -179,7 +220,37 @@ function addColumn(&$columns, $form, $label) {
     }
 }
 
+function makeDefaultSelectCriteria() {
+  // Format is array of (key, expted_value) paris. All must match for a row
+  // be selected.
+  $criteria = [
+      [ 'key' => 'Include your family in the Dragon Directory?', 'value' => 'Yes'],
+      [ 'key' => 'is_trash', 'value' => '0']
+    ];
+  return wp_json_encode($criteria, JSON_PRETTY_PRINT);
+}
+
+function makeDefaultExportedColumns() {
+    $columns = array();
+    for ($i = 1; $i <= 4; $i++) {
+      $columns[] = "Parent / Guardian #$i Name";
+      $columns[] = "Parent / Guardian #$i Email";
+      $columns[] = "Parent / Guardian #$i Phone";
+
+      $columns[] = "Student #$i Name";
+      $columns[] = "Student #$i Grade Level";
+      $columns[] = "Student #$i Teacher";
+    }
+
+    $columns[] = 'Neighborhood School';
+    $columns[] = 'Neighborhood School';
+    $columns[] = 'Bus Route';
+
+    return wp_json_encode($columns, JSON_PRETTY_PRINT);
+}
+
 function createAllColumns($form) {
+    var_dump($form);
     $columns = array();
     for ($i = 1; $i <= 4; $i++) {
       addColumn($columns, $form, "Parent / Guardian #$i Name");
@@ -210,24 +281,21 @@ function createAllColumns($form) {
     return $columns;
 }
 
-function render_form_data($atts, $content, $shortcode_tag) {
-     $a = shortcode_atts( array(
-           'js_url' => '',
-           'css_url' => '',
-           'entry_func' => 'console.warning',
-           'datavar' => 'dd_data2',
-           'form_id' => 0,
-           ), $atts );
-
-    $js_url = esc_attr($a['js_url']);
-    $css_url = esc_attr($a['css_url']);
-    $entry_func = esc_js($a['entry_func']);
-    $form_id = (int) $a['form_id'];
-
+function get_selected_entries($form_id) {
     $form = \GFAPI::get_form($form_id);
+    if (!$form) {
+        return ["column_info" => [], "rows" => []];
+    }
+
+    $columns = createAllColumns($form);
+
     $field_number = to_field_id($form, 'Include your family in the Dragon Directory?');
     if ($field_number == false) {
+        // TODO: Throw error here.
         echo "Bad";
+        error_log("Problem with select criteria: ");
+        return ["column_info" => [], "rows" => []];
+
     }
 
     // Positive filter the rows for selection.
@@ -255,7 +323,6 @@ function render_form_data($atts, $content, $shortcode_tag) {
         // Only extract the requested columns. Putting ALL data into the
         // JSON object with leak private information about form submissions
         // on to the webpage.
-        $columns = createAllColumns($form);
         foreach ($entries as $row) {
             $new_row = array();
             foreach ($columns as $field_id => $column_info) {
@@ -284,8 +351,26 @@ function render_form_data($atts, $content, $shortcode_tag) {
         }
     }
 
-    $json_column_info = wp_json_encode($columns);
-    $json_data = wp_json_encode($selected_data);
+    return array("column_info" => $columns, "rows" => $selected_data);
+}
+
+function render_form_data($atts, $content, $shortcode_tag) {
+     $a = shortcode_atts( array(
+           'js_url' => '',
+           'css_url' => '',
+           'entry_func' => 'console.warning',
+           'form_id' => 0,
+           ), $atts );
+
+    $js_url = esc_attr($a['js_url']);
+    $css_url = esc_attr($a['css_url']);
+    $entry_func = esc_js($a['entry_func']);
+    $form_id = (int) $a['form_id'];
+
+    $selected = get_selected_entries($form_id);
+
+    $json_column_info = wp_json_encode($selected['column_info']);
+    $json_data = wp_json_encode($selected['rows']);
 
     return <<<OUTPUT
     <div id="dd_root">Loading...</div>
@@ -308,7 +393,22 @@ function render_form_data($atts, $content, $shortcode_tag) {
 OUTPUT;
 }
 
-function shortcodes_init() {
+function rest_get_entries( $params ) {
+    // TODO: Access control here.
+    $form_id = intval(get_option('dragon_directory_form_id'));
+
+    return get_selected_entries($form_id);
+}
+
+function plugin_init() {
     add_shortcode('dd_render_data', render_form_data(...));
 }
-add_action('init', shortcodes_init(...));
+add_action('init', plugin_init(...));
+
+add_action( 'rest_api_init', function () {
+    register_rest_route(PLUGIN_NAME . "/v1", '/entries', array(
+          'methods' => 'GET',
+          'callback' => rest_get_entries(...),
+          'permission_callback' => '__return_true',
+          ));
+    });
