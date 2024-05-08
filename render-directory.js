@@ -410,4 +410,16 @@ function renderStudents(target_element, column_info, rows) {
   render(html`<${Directory} allStudents=${allStudents} />`, target_element);
 }
 
-export { renderStudents };
+async function renderStudentsFromRestPath(path, element) {
+  const response = await fetch(
+      path,
+      {
+        headers: {
+          'Accept': 'application/json'
+          }
+      });
+  const data = await response.json();
+  renderStudents(element, data['column_info'], data['rows']);
+}
+
+export { renderStudents, renderStudentsFromRestPath };

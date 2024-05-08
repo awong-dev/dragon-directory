@@ -9,6 +9,10 @@ namespace DragonDirectory;
 
 const PLUGIN_NAME = 'dragondirectory';
 const SETTINGS_GROUP = PLUGIN_NAME . '-group';
+const OPTION_ACCESS_PASSWORD = PLUGIN_NAME . '_access_password';
+const OPTION_FORM_ID = PLUGIN_NAME . '_form_id';
+const OPTION_SELECT_CRITERIA = PLUGIN_NAME . '_select_criteria';
+const OPTION_EXPORTED_COLUMNS = PLUGIN_NAME . '_exported_columns';
 
 function options_page_html() {
     // check user capabilities
@@ -136,13 +140,12 @@ function sanitize_field_id($input) {
 function register_my_setting() {
     add_settings_section('general', 'General', false, PLUGIN_NAME);
 
-    register_plugin_setting(PLUGIN_NAME . '_access_password', 'Access Password', 'moo');
+    register_plugin_setting(OPTION_ACCESS_PASSWORD, 'Access Password', 'moo');
     // https://docs.gravityforms.com/searching-and-getting-entries-with-the-gfapi/#search-arguments
     // TODO: This should be an int setting.
-    register_plugin_setting(PLUGIN_NAME . '_form_id', 'Form ID', '', 'integer', sanitize_field_id(...), field_html_formid(...));
-    register_plugin_setting(PLUGIN_NAME . '_select_criteria', 'JSON list of row select criteria', makeDefaultSelectCriteria(), 'text', sanitize_text_field(...), field_html_textarea(...));
-    register_plugin_setting(PLUGIN_NAME . '_exported_columns', 'JSON list of columns to export', makeDefaultExportedColumns(), 'text', sanitize_text_field(...), field_html_textarea(...));
-    error_log("hi: ");
+    register_plugin_setting(OPTION_FORM_ID, 'Form ID', '', 'integer', sanitize_field_id(...), field_html_formid(...));
+    register_plugin_setting(OPTION_SELECT_CRITERIA, 'JSON list of row select criteria', makeDefaultSelectCriteria(), 'text', sanitize_text_field(...), field_html_textarea(...));
+    register_plugin_setting(OPTION_EXPORTED_COLUMNS, 'JSON list of columns to export', makeDefaultExportedColumns(), 'text', sanitize_text_field(...), field_html_textarea(...));
 }
 
 add_action('admin_init', register_my_setting(...));
@@ -221,13 +224,15 @@ function addColumn(&$columns, $form, $label) {
 }
 
 function makeDefaultSelectCriteria() {
-  // Format is array of (key, expted_value) paris. All must match for a row
-  // be selected.
-  $criteria = [
-      [ 'key' => 'Include your family in the Dragon Directory?', 'value' => 'Yes'],
-      [ 'key' => 'is_trash', 'value' => '0']
+    // Format is array of (key, expted_value) paris. All must match for a row
+    // be selected.
+    $criteria = [
+          [ 'key' => 'Include your family in the Dragon Directory?', 'value' => 'Yes'],
+          [ 'key' => 'is_trash', 'value' => '0']
     ];
-  return wp_json_encode($criteria, JSON_PRETTY_PRINT);
+
+    // See https://core.trac.wordpress.org/ticket/21767 for stripslashes.
+    return stripslashes(json_encode($criteria, JSON_PRETTY_PRINT));
 }
 
 function makeDefaultExportedColumns() {
@@ -246,25 +251,25 @@ function makeDefaultExportedColumns() {
     $columns[] = 'Neighborhood School';
     $columns[] = 'Bus Route';
 
-    return wp_json_encode($columns, JSON_PRETTY_PRINT);
+    // See https://core.trac.wordpress.org/ticket/21767 for stripslashes.
+    return stripslashes(wp_json_encode($columns, JSON_PRETTY_PRINT));
 }
 
 function createAllColumns($form) {
-    var_dump($form);
     $columns = array();
-    for ($i = 1; $i <= 4; $i++) {
-      addColumn($columns, $form, "Parent / Guardian #$i Name");
-      addColumn($columns, $form, "Parent / Guardian #$i Email");
-      addColumn($columns, $form, "Parent / Guardian #$i Phone");
+    // Add all custom columns.
+    error_log("hi: ");
+    error_log("hi: ");
+    error_log("hi: ");
+    error_log("hi: ");
+    error_log(get_option(OPTION_EXPORTED_COLUMNS));
 
-      addColumn($columns, $form, "Student #$i Name");
-      addColumn($columns, $form, "Student #$i Grade Level");
-      addColumn($columns, $form, "Student #$i Teacher");
+    $x = json_decode(get_option(OPTION_EXPORTED_COLUMNS, makeDefaultExportedColumns()));
+    foreach ($x as $label) {
+        addColumn($columns, $form, $label);
     }
 
-    addColumn($columns, $form, 'Neighborhood School');
-    addColumn($columns, $form, 'Neighborhood School');
-    addColumn($columns, $form, 'Bus Route');
+    // Add the audit columns.
     $columns['date_created'] = array(
       'label' => 'meta:date_created',
       'type' => 'date',
@@ -354,56 +359,11 @@ function get_selected_entries($form_id) {
     return array("column_info" => $columns, "rows" => $selected_data);
 }
 
-function render_form_data($atts, $content, $shortcode_tag) {
-     $a = shortcode_atts( array(
-           'js_url' => '',
-           'css_url' => '',
-           'entry_func' => 'console.warning',
-           'form_id' => 0,
-           ), $atts );
-
-    $js_url = esc_attr($a['js_url']);
-    $css_url = esc_attr($a['css_url']);
-    $entry_func = esc_js($a['entry_func']);
-    $form_id = (int) $a['form_id'];
-
-    $selected = get_selected_entries($form_id);
-
-    $json_column_info = wp_json_encode($selected['column_info']);
-    $json_data = wp_json_encode($selected['rows']);
-
-    return <<<OUTPUT
-    <div id="dd_root">Loading...</div>
-    <script type="module">
-        import { renderStudents } from "{$js_url}";
-
-        // Load the stylesheet.
-        const cssLink = document.createElement('link');
-        cssLink.href = "{$css_url}";
-        cssLink.type = 'text/css';
-        cssLink.rel = 'stylesheet';
-        cssLink.media = 'screen,print';
-        document.getElementsByTagName('head')[0].appendChild(cssLink);
-
-        // Render the data.
-        const column_info = $json_column_info;
-        const data = $json_data;
-        {$entry_func}(document.getElementById('dd_root'), column_info, data);
-    </script>
-OUTPUT;
-}
-
 function rest_get_entries( $params ) {
-    // TODO: Access control here.
-    $form_id = intval(get_option('dragon_directory_form_id'));
+    $form_id = intval(get_option(OPTION_FORM_ID));
 
     return get_selected_entries($form_id);
 }
-
-function plugin_init() {
-    add_shortcode('dd_render_data', render_form_data(...));
-}
-add_action('init', plugin_init(...));
 
 add_action( 'rest_api_init', function () {
     register_rest_route(PLUGIN_NAME . "/v1", '/entries', array(
