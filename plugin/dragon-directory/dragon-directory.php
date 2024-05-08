@@ -24,16 +24,74 @@ function options_page_html() {
     ?>
     <div class="wrap">
         <h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
+        See bottom for example values.
         <form action="options.php" method="post">
-                <?php
-                // output security fields for the registered setting "wporg_options"
-                settings_fields(SETTINGS_GROUP);
-                // output setting sections and their fields
-                do_settings_sections(PLUGIN_NAME);
-                // output save settings button
-                submit_button(__('Save Settings', 'textdomain'));
-                ?>
+            <?php
+            // output security fields for the registered setting "wporg_options"
+            settings_fields(SETTINGS_GROUP);
+            // output setting sections and their fields
+            do_settings_sections(PLUGIN_NAME);
+            // output save settings button
+            submit_button(__('Save Settings', 'textdomain'));
+            ?>
         </form>
+        <div>
+        <table border=1>
+        <tr><td>The access code is a weak-speed bump to avoid easy directory access.
+            It's a shared password by nature.  Set it to something.  If you really
+            want to disable it, set it to the magic strinct <?php DISABLE_ACCESS_CODE_VALUE ?> </td></tr>
+
+        <tr><td>The form id is the number representing the form to set. Look at the "ID" column in <a href="/wp-admin/admin.php?page=gf_edit_forms">the Gravity Forms settings.</a></td></tr>
+
+        <tr><td>The select criteria is a json array listing a positive filter for all entries retrieved. This must be set to at least an empty array (eg []) just to ensure the site admin thinks about it. Rows retrieved here are made avaiable via a REST API as long as the access code is given so you do NOT want to select any rows that should be kept private. An example of such a filter is:
+        <p>
+        <pre>
+        <code>
+        [ {
+            "key": "Include your family in the Dragon Directory?",
+            "value": "Yes"
+          }
+        ]
+        </code>
+        </pre>
+        </p></td></tr>
+
+        <tr><td>The columns to export is a list of which columns to put into the rest
+        response. Combined with select criteria you can decide what information from the form
+        to expose. (It's basically a quasi sql query). An example set of data would be:
+
+        <pre>
+        <code>
+        [ "Parent / Guardian #1 Name",
+          "Parent / Guardian #1 Email",
+          "Parent / Guardian #1 Phone",
+          "Student #1 Name",
+          "Student #1 Grade Level",
+          "Student #1 Teacher",
+          "Parent / Guardian #2 Name",
+          "Parent / Guardian #2 Email",
+          "Parent / Guardian #2 Phone",
+          "Student #2 Name",
+          "Student #2 Grade Level",
+          "Student #2 Teacher",
+          "Parent / Guardian #3 Name",
+          "Parent / Guardian #3 Email",
+          "Parent / Guardian #3 Phone",
+          "Student #3 Name",
+          "Student #3 Grade Level",
+          "Student #3 Teacher",
+          "Parent / Guardian #4 Name",
+          "Parent / Guardian #4 Email",
+          "Parent / Guardian #4 Phone",
+          "Student #4 Name",
+          "Student #4 Grade Level",
+          "Student #4 Teacher",
+          "Neighborhood School",
+          "Neighborhood School",
+          "Bus Route" ]
+        </code>
+        </pre>
+        </div>
     </div>
     <?php
 }
@@ -64,6 +122,7 @@ function field_html_text($val) {
     $id = $val['id'];
     ?>
         <input
+            class="dd-input"
             type="text"
             name="<?= $id ?>"
             id="<?= $id ?>"
@@ -76,6 +135,7 @@ function field_html_formid($val) {
     $id = $val['id'];
     ?>
         <input
+            class="dd-input"
             type="number"
             name="<?= $id ?>"
             id="<?= $id ?>"
@@ -90,6 +150,8 @@ function field_html_textarea($val) {
     $id = $val['id'];
     ?>
         <textarea
+            class="dd-input"
+            rows=5
             name="<?= $id ?>"
             id="<?= $id ?>"
         ><?= get_option($id) ?></textarea>
@@ -201,8 +263,8 @@ function to_field_id($form, $label) {
 function addColumn(&$columns, $form, $label) {
     $field = get_field_with_label($form, $label);
     if ($field === false) {
-        // TODO: Handle error.
-        var_dump($form);
+        echo "Count not find column: '$label'";
+        throw new \Exception('Could not find column ' . $label);
         return;
     }
 
@@ -232,7 +294,6 @@ function makeDefaultSelectCriteria() {
     // be selected.
     $criteria = [
           [ 'key' => 'Include your family in the Dragon Directory?', 'value' => 'Yes'],
-          [ 'key' => 'is_trash', 'value' => '0']
     ];
 
     // See https://core.trac.wordpress.org/ticket/21767 for stripslashes.
@@ -261,15 +322,12 @@ function makeDefaultExportedColumns() {
 
 function createAllColumns($form) {
     $columns = array();
-    // Add all custom columns.
-    error_log("hi: ");
-    error_log("hi: ");
-    error_log("hi: ");
-    error_log("hi: ");
-    error_log(get_option(OPTION_EXPORTED_COLUMNS));
 
-    $x = json_decode(get_option(OPTION_EXPORTED_COLUMNS, makeDefaultExportedColumns()));
-    foreach ($x as $label) {
+    // Add all custom columns.
+    $column_labels = json_decode(
+        get_option(OPTION_EXPORTED_COLUMNS, makeDefaultExportedColumns()),
+        JSON_THROW_ON_ERROR);
+    foreach ($column_labels as $label) {
         addColumn($columns, $form, $label);
     }
 
@@ -298,28 +356,29 @@ function get_selected_entries($form_id) {
 
     $columns = createAllColumns($form);
 
-    $field_number = to_field_id($form, 'Include your family in the Dragon Directory?');
-    if ($field_number == false) {
-        // TODO: Throw error here.
-        echo "Bad";
-        error_log("Problem with select criteria: ");
-        return ["column_info" => [], "rows" => []];
-
+    // Positive filter the rows for selection.
+    $field_filters = array(
+        'mode' => 'any',
+    );
+    $filters_json = trim(get_option(OPTION_SELECT_CRITERIA, ""));
+    if (!$filters_json) {
+      // Don't allow an unset field.
+      return array("column_info" => $columns, "rows" => ["1" => "select filter unset"]);
     }
 
-    // Positive filter the rows for selection.
+    foreach (json_decode($filters_json, JSON_THROW_ON_ERROR) as $entry) {
+        $field_label = $entry['key'];
+
+        // Pick out the values to avoid passing random params through.
+        $field_filters[] = array('key' => $field_label, 'value' => $entry['value']);
+    }
+
     $search_criteria = array(
         'status'        => 'active',
-        'field_filters' => array(
-          'mode' => 'all',
-          array(
-            'key'   => strval($field_number),
-            'value' => 'Yes'
-            ),
-          )
+        'field_filters' => $field_filters
         );
 
-    $paging = array( 'offset' => 0, 'page_size' => 20);
+    $paging = array( 'offset' => 0, 'page_size' => 1000);
     $selected_data = array();
     while (1) {
         $entries = \GFAPI::get_entries($form_id, $search_criteria, null, $paging);
@@ -401,3 +460,9 @@ add_action( 'rest_api_init', function () {
           'permission_callback' => '__return_true',
           ));
     });
+
+function wpdocs_enqueue_custom_admin_style() {
+        wp_register_style( PLUGIN_NAME . '_admin_css', plugins_url('/dragon-directory-admin.css', __FILE__), false, '1.0.0' );
+        wp_enqueue_style( PLUGIN_NAME . '_admin_css' );
+}
+add_action('admin_enqueue_scripts', wpdocs_enqueue_custom_admin_style(...));
