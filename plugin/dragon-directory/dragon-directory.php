@@ -9,10 +9,11 @@ namespace DragonDirectory;
 
 const PLUGIN_NAME = 'dragondirectory';
 const SETTINGS_GROUP = PLUGIN_NAME . '-group';
-const OPTION_ACCESS_PASSWORD = PLUGIN_NAME . '_access_password';
+const OPTION_ACCESS_CODE = PLUGIN_NAME . '_access_password';
 const OPTION_FORM_ID = PLUGIN_NAME . '_form_id';
 const OPTION_SELECT_CRITERIA = PLUGIN_NAME . '_select_criteria';
 const OPTION_EXPORTED_COLUMNS = PLUGIN_NAME . '_exported_columns';
+const DISABLE_ACCESS_CODE_VALUE = '==Disable Access Code==';
 
 function options_page_html() {
     // check user capabilities
@@ -140,12 +141,15 @@ function sanitize_field_id($input) {
 function register_my_setting() {
     add_settings_section('general', 'General', false, PLUGIN_NAME);
 
-    register_plugin_setting(OPTION_ACCESS_PASSWORD, 'Access Password', 'moo');
-    // https://docs.gravityforms.com/searching-and-getting-entries-with-the-gfapi/#search-arguments
-    // TODO: This should be an int setting.
-    register_plugin_setting(OPTION_FORM_ID, 'Form ID', '', 'integer', sanitize_field_id(...), field_html_formid(...));
-    register_plugin_setting(OPTION_SELECT_CRITERIA, 'JSON list of row select criteria', makeDefaultSelectCriteria(), 'text', sanitize_text_field(...), field_html_textarea(...));
-    register_plugin_setting(OPTION_EXPORTED_COLUMNS, 'JSON list of columns to export', makeDefaultExportedColumns(), 'text', sanitize_text_field(...), field_html_textarea(...));
+    register_plugin_setting(OPTION_ACCESS_CODE, 'Access Code', '');
+    register_plugin_setting(OPTION_FORM_ID, 'Form ID', '', 'integer',
+        sanitize_field_id(...), field_html_formid(...));
+    register_plugin_setting(OPTION_SELECT_CRITERIA,
+        'JSON list of row select criteria', makeDefaultSelectCriteria(),
+        'text', sanitize_text_field(...), field_html_textarea(...));
+    register_plugin_setting(OPTION_EXPORTED_COLUMNS,
+        'JSON list of columns to export', makeDefaultExportedColumns(),
+        'text', sanitize_text_field(...), field_html_textarea(...));
 }
 
 add_action('admin_init', register_my_setting(...));
@@ -359,8 +363,33 @@ function get_selected_entries($form_id) {
     return array("column_info" => $columns, "rows" => $selected_data);
 }
 
-function rest_get_entries( $params ) {
-    $form_id = intval(get_option(OPTION_FORM_ID));
+function rest_get_entries($request) {
+    $password = get_option(OPTION_ACCESS_CODE, '');
+    if (!$password) {
+        return new \WP_Error(
+          'access_code_unset',
+          "Access Code Not Set. To really disable access codes, set it to '" .
+              DISABLE_ACCESS_CODE_VALUE .
+              "' and the API will be public",
+          array('status' => 500) );
+    }
+
+    $form_id = intval(get_option(OPTION_FORM_ID, "-1"));
+
+    if ($form_id < 0) {
+        return new \WP_Error(
+            'invalid_form_id',
+            'Invalid Form Id',
+            array('status' => 500));
+    }
+
+    if ($password !== DISABLE_ACCESS_CODE_VALUE &&
+        $password !== $request->get_param('access_code')) {
+        return new \WP_Error(
+            'invalid_access_code',
+            'Invalid Access Code',
+            array('status' => 401));
+    }
 
     return get_selected_entries($form_id);
 }
