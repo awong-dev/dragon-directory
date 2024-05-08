@@ -410,9 +410,9 @@ function renderStudents(target_element, column_info, rows) {
   render(html`<${Directory} allStudents=${allStudents} />`, target_element);
 }
 
-async function renderStudentsFromRestPath(path, element) {
+async function renderStudentsFromRestPath(path, element, access_code) {
   const response = await fetch(
-      path,
+      `${path}?access_code=${access_code}`,
       {
         headers: {
           'Accept': 'application/json'

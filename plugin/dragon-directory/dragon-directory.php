@@ -360,6 +360,7 @@ function get_selected_entries($form_id) {
     $field_filters = array(
         'mode' => 'any',
     );
+    /*
     $filters_json = trim(get_option(OPTION_SELECT_CRITERIA, ""));
     if (!$filters_json) {
       // Don't allow an unset field.
@@ -372,6 +373,7 @@ function get_selected_entries($form_id) {
         // Pick out the values to avoid passing random params through.
         $field_filters[] = array('key' => $field_label, 'value' => $entry['value']);
     }
+    */
 
     $search_criteria = array(
         'status'        => 'active',
