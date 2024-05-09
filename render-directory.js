@@ -345,7 +345,7 @@ function StudentNameHeader({formId, leftOver, linkEntries, studentInfo}) {
   if (linkEntries) {
     return html`
       <header>
-        <a href=${`/wp-admin/admin.php?page=gf_entries&view=entry&id=${formId}&lid=${studentInfo.entry_id}`}>
+        <a target="_blank" href=${`/wp-admin/admin.php?page=gf_entries&view=entry&id=${formId}&lid=${studentInfo.entry_id}`}>
           ${parts.join(' - ')}
         </a>
       </header>
