@@ -25,6 +25,8 @@ function options_page_html() {
     <div class="wrap">
         <h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
         See bottom for example values.
+        Also, remember that when using the form for access code, putting "admin:" before
+        the access code will link the student names to the gravity form entry.
         <form action="options.php" method="post">
             <?php
             // output security fields for the registered setting "wporg_options"
@@ -351,7 +353,7 @@ function createAllColumns($form) {
 function get_selected_entries($form_id) {
     $form = \GFAPI::get_form($form_id);
     if (!$form) {
-        return ["column_info" => [], "rows" => []];
+        return ["form_id" => $form_id, "column_info" => [], "rows" => []];
     }
 
     $columns = createAllColumns($form);
@@ -414,14 +416,12 @@ function get_selected_entries($form_id) {
                 }
             }
             if ($new_row) {
-                $new_row['date_created'] = $row['date_created'];
-                $new_row['date_updated'] = $row['date_updated'];
                 $selected_data[] = $new_row;
             }
         }
     }
 
-    return array("column_info" => $columns, "rows" => $selected_data);
+    return array("form_id" => $form_id, "column_info" => $columns, "rows" => $selected_data);
 }
 
 function rest_get_entries($request) {

@@ -264,6 +264,17 @@ function groupStudents(students, groupBy) {
   return groupByTeacher(students);
 }
 
+function getLeftoverGroups(groupBy) {
+  if (groupBy === "neighborhood_school") {
+    return ["teacher", "bus_route"];
+  } else if (groupBy === "bus_route") {
+    return ["teacher", "neighborhood_school"];
+  }
+
+  // Default to teacher sort.
+  return ["neighborhood_school", "bus_route"];
+}
+
 function byGroupNameOrdering([a_group,_1],[b_group,_2]) {
   if (a_group == b_group) {
     return 0;
@@ -310,41 +321,53 @@ function Controls({handleClick}) {
 }
 
 // Renders the information for a student other than the name.
-function StudentInfo({student_info}) {
+function StudentInfo({studentInfo}) {
   return html`
     <div class="student-info">
-      ${student_info.parents.map(p => html`
+      ${studentInfo.parents.map(p => html`
           <div class="parent-info">
             <div class="name">${p.parent_name}<//>
             <div class="phone"><a href="tel:${p.phone}">${p.phone}</a><//>
             <div class="email"><a href="mailto:${p.email}">${p.email}</a><//>
           <//>
       `)}
-      ${student_info.neighborhood_school && html`
-          <div class="nh-school-info">
-            <div>Neighborhood School</div>
-            <div>${student_info.neighborhood_school}</div>
-          </div>
-      `}
-      ${student_info.bus_route && html`
-          <div class="bus-info">
-            <div>Bus Route</div>
-            <div>${student_info.bus_route}</div>
-          </div>
-      `}
     <//>
   `;
 }
 
+function StudentNameHeader({formId, leftOver, linkEntries, studentInfo}) {
+  const parts = [studentInfo.student_name];
+  for (const key of leftOver) {
+    if (studentInfo[key]) {
+      parts.push(studentInfo[key]);
+    }
+  }
+  if (linkEntries) {
+    return html`
+      <header>
+        <a href=${`/wp-admin/admin.php?page=gf_entries&view=entry&id=${formId}&lid=${studentInfo.entry_id}`}>
+          ${parts.join(' - ')}
+        </a>
+      </header>
+    `;
+  }
+
+  return html`<header>${parts.join(' - ')}</header>`;
+}
+
 // Renders tne entire table for a student.
-function StudentTable({student_list}) {
+function StudentTable({formId, leftOver, linkEntries, studentList}) {
     return html`
         <div class="student-table">
           <ul class="student-list">
-            ${student_list.map(student_info => (html`
-              <li class="student-entry" data-updated="${student_info.date_updated.toISOString()}" data-entry-id="${student_info.entry_id}">
-                  <header>${student_info.student_name}</header>
-                  <${StudentInfo} student_info=${student_info} />
+            ${studentList.map(studentInfo => (html`
+              <li class="student-entry" data-updated="${studentInfo.date_updated.toISOString()}" data-entry-id="${studentInfo.entry_id}">
+                  <${StudentNameHeader}
+                      formId=${formId}
+                      studentInfo=${studentInfo}
+                      leftOver=${leftOver}
+                      linkEntries=${linkEntries} />
+                  <${StudentInfo} studentInfo=${studentInfo} />
               <//>`
             ))}
           </ul>
@@ -362,15 +385,21 @@ function strcmp(a,b) {
   return -1;
 }
 
-function GroupedList({students, groupBy}) {
+function GroupedList({formId, students, groupBy, linkEntries}) {
   const grouped = groupStudents(students, groupBy);
+  const leftOver = getLeftoverGroups(groupBy);
 
   return html`
     <div>
       ${grouped.map(([group_name, student_list]) => html`
           <section class="group-card">
             <header>${group_name}</header>
-            <${StudentTable} student_list=${student_list.sort((a,b) => strcmp(a.student_name, b.student_name))} />
+            <${StudentTable}
+                formId=${formId}
+                leftOver=${leftOver}
+                linkEntries=${linkEntries}
+                studentList=${student_list.sort(
+                    (a,b) => strcmp(a.student_name, b.student_name))} />
           <//>
         `)
       }
@@ -378,48 +407,134 @@ function GroupedList({students, groupBy}) {
   `;
 }
 
-// Top level app container. Holds state.
-function Directory({allStudents}) {
+// Top level container for the Directory. Holds state.
+function Directory({allStudents, formId, linkEntries}) {
   const fragmentParams = parseFragment();
   const [groupBy, setGroupBy] = useState(fragmentParams['groupby'] || "teacher");
 
   return html`
       <div class="directory-container">
           <${Controls} handleClick=${setGroupBy} />
-          <${GroupedList} students=${allStudents} groupBy=${groupBy} />
+          <${GroupedList} students=${allStudents} formId=${formId} groupBy=${groupBy} linkEntries=${linkEntries} />
       </div>
   `;
 }
 
-function renderStudents(target_element, column_info, rows) {
-  target_element.innerHTML = '';
-  const allStudents = {};
+// Shows the Load Directory control.
+function LoadDirectoryControl({tryFetchData, message}) {
+  const handleClick = () => {
+    tryFetchData(document.getElementById('access-code').value);
+  };
 
-  const fieldMapping = makeFieldMapping(column_info);
-  for (const row of rows) {
-    for (const s of rowToStudents(row, fieldMapping)) {
-      // Let newer entries for a student overwrite older ones.
-      if (!allStudents.hasOwnProperty(s.student_name) ||
-           allStudents[s.student_name].date_updated < s.date_updated) {
-        allStudents[s.student_name] = s;
-      }
+  return html`
+    <div class="load-directory-control">
+      ${html`<div class="error-message">${message}</div>`}
+      <label for="access-code">Access Code:</label>
+      <input id="access-code" type="password"></input>
+      <button id="load-directory-button" onclick=${handleClick}>
+      Load Directory
+      </button>
+    <//>
+  `;
+}
+
+// Shows the loading message.
+function LoadingMessage() {
+  return html`
+    <div class="loading-message">
+      Doing laundry...making lunch... Will load data eventually...
+    <//>
+  `;
+}
+
+const promisedSleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
+
+const ADMIN_PREFIX="admin:";
+
+// Shows the loading message.
+function App({entriesEndpoint}) {
+  const [allStudents, setAllStudents] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [formId, setFormId] = useState('');
+  const [linkEntries, setLinkEntries] = useState(false);
+
+  const tryFetchData = async (accessCode) => {
+    setIsLoading(true);
+
+    if (accessCode.startsWith(ADMIN_PREFIX)) {
+      setLinkEntries(true);
+      accessCode = accessCode.slice(ADMIN_PREFIX.length);
     }
-  }
-  window.allStudents = allStudents;
 
-  render(html`<${Directory} allStudents=${allStudents} />`, target_element);
-}
+    try {
+      // Wait slightly just to be cute.
+      await promisedSleep(500);
 
-async function renderStudentsFromRestPath(path, element, access_code) {
-  const response = await fetch(
-      `${path}?access_code=${access_code}`,
-      {
-        headers: {
-          'Accept': 'application/json'
+      const response = await fetch(
+          `${entriesEndpoint}?access_code=${accessCode}`,
+          {
+            headers: {
+              'Accept': 'application/json'
+              }
+          });
+
+      if (!response.ok) {
+        setErrorMessage(`Retrieving Entries failed. Status: ${response.statusText}`);
+        return;
+      }
+
+      const data = await response.json();
+      const fieldMapping = makeFieldMapping(data['column_info']);
+      const newAllStudents = {};
+      for (const row of data['rows']) {
+        for (const s of rowToStudents(row, fieldMapping)) {
+          // Let newer entries for a student overwrite older ones.
+          if (!newAllStudents.hasOwnProperty(s.student_name) ||
+               newAllStudents[s.student_name].date_updated < s.date_updated) {
+            newAllStudents[s.student_name] = s;
           }
-      });
-  const data = await response.json();
-  renderStudents(element, data['column_info'], data['rows']);
+        }
+      }
+
+      setAllStudents(newAllStudents);
+      setFormId(data['form_id']);
+    } catch (e) {
+      setErrorMessage("Unknown failure: ${e}");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (!allStudents) {
+    if (isLoading) {
+      return html`
+        <${LoadingMessage} />
+      `;
+    }
+
+    return html`
+      <${LoadDirectoryControl} tryFetchData=${tryFetchData} message=${errorMessage} />
+    `;
+  }
+
+  return html`
+    <${Directory} allStudents=${allStudents} formId=${formId} linkEntries=${linkEntries} />
+  `;
 }
 
-export { renderStudents, renderStudentsFromRestPath };
+function renderDirectory(entriesEndpoint, target_element) {
+  target_element.innerHTML = '';
+  render(html`<${App} entriesEndpoint=${entriesEndpoint} />`, target_element);
+}
+
+async function loadCss(cssUrl) {
+  const cssLink = document.createElement('link');
+  cssLink.href = cssUrl;
+  cssLink.type = 'text/css';
+  cssLink.rel = 'stylesheet';
+  cssLink.media = 'screen,print';
+  document.getElementsByTagName('head')[0].appendChild(cssLink);
+}
+
+export { loadCss, renderDirectory };
