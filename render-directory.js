@@ -424,16 +424,20 @@ function Directory({allStudents, formId, linkEntries}) {
 function LoadDirectoryControl({tryFetchData, message}) {
   const handleClick = () => {
     tryFetchData(document.getElementById('access-code').value);
+
+    return false; // Do not reload page.
   };
 
   return html`
     <div class="load-directory-control">
       ${html`<div class="error-message">${message}</div>`}
-      <label for="access-code">Access Code:</label>
-      <input id="access-code" type="password"></input>
-      <button id="load-directory-button" onclick=${handleClick}>
-      Load Directory
-      </button>
+      <form onSubmit=${handleClick}>
+        <label for="access-code">Access Code:</label>
+        <input id="access-code" type="password"></input>
+        <button id="load-directory-button" type="submit">
+        Load Directory
+        </button>
+      </form>
     <//>
   `;
 }
