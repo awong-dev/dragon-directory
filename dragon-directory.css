@@ -1,5 +1,4 @@
 .directory-control {
-    background-color: lightgrey;
     padding: 0.5ex 1ex 0.5ex 1ex;
 }
 
@@ -10,10 +9,10 @@
 .directory-container {
     max-width: 1024px;
     margin: auto;
-    border-style: dashed;
 }
 
 .group-card {
+    border-radius: 7px;
     background-color: grey;
     padding: 2ex;
     margin-bottom: 2ex;
@@ -27,24 +26,26 @@
 }
 
 .student-table {
+    border-radius: 7px;
     padding: 0ex;
 }
 
 .student-list {
-    background: #cdcdcd;
+    border-radius: 7px;
     font-size: 12pt;
     list-style-type: none;
     padding: 0ex .5ex 0ex .5ex;
 }
 
 .student-entry {
+    border-radius: 7px;
     background-color: white;
     padding: 1ex;
     margin: 1ex;
 }
 
 .student-entry:nth-child(even)  {
-    background-color: lightgray;
+    background-color: #efefef;
 }
 
 .student-entry > header {
