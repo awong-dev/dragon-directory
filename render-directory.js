@@ -456,39 +456,14 @@ const promisedSleep = (delay) => new Promise((resolve) => setTimeout(resolve, de
 const ADMIN_PREFIX="admin:";
 
 // Shows the loading message.
-function App({entriesEndpoint}) {
+function App({entriesEndpoint, syntheticData}) {
   const [allStudents, setAllStudents] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [formId, setFormId] = useState('');
   const [linkEntries, setLinkEntries] = useState(false);
 
-  const tryFetchData = async (accessCode) => {
-    setIsLoading(true);
-
-    if (accessCode.startsWith(ADMIN_PREFIX)) {
-      setLinkEntries(true);
-      accessCode = accessCode.slice(ADMIN_PREFIX.length);
-    }
-
-    try {
-      // Wait slightly just to be cute.
-      await promisedSleep(500);
-
-      const response = await fetch(
-          `${entriesEndpoint}?access_code=${accessCode}`,
-          {
-            headers: {
-              'Accept': 'application/json'
-              }
-          });
-
-      if (!response.ok) {
-        setErrorMessage(`Retrieving Entries failed. Status: ${response.statusText}`);
-        return;
-      }
-
-      const data = await response.json();
+  const parseData = (data) => {
       const fieldMapping = makeFieldMapping(data['column_info']);
       const newAllStudents = {};
       for (const row of data['rows']) {
@@ -503,8 +478,40 @@ function App({entriesEndpoint}) {
 
       setAllStudents(newAllStudents);
       setFormId(data['form_id']);
+  };
+
+  const tryFetchData = async (accessCode) => {
+    setIsLoading(true);
+
+    if (accessCode.startsWith(ADMIN_PREFIX)) {
+      setLinkEntries(true);
+      accessCode = accessCode.slice(ADMIN_PREFIX.length);
+    }
+
+    try {
+      // Wait slightly just to be cute.
+      await promisedSleep(500);
+
+      if (syntheticData) {
+        parseData(syntheticData);
+      } else {
+        const response = await fetch(
+            `${entriesEndpoint}?access_code=${accessCode}`,
+            {
+              headers: {
+                'Accept': 'application/json'
+                }
+            });
+
+        if (!response.ok) {
+          setErrorMessage(`Retrieving Entries failed. Status: ${response.statusText}`);
+          return;
+        }
+
+        parseData(await response.json());
+      }
     } catch (e) {
-      setErrorMessage("Unknown failure: ${e}");
+      setErrorMessage(`Unknown failure: ${e}`);
     } finally {
       setIsLoading(false);
     }
@@ -527,9 +534,9 @@ function App({entriesEndpoint}) {
   `;
 }
 
-function renderDirectory(entriesEndpoint, target_element) {
+function renderDirectory(entriesEndpoint, target_element, syntheticData) {
   target_element.innerHTML = '';
-  render(html`<${App} entriesEndpoint=${entriesEndpoint} />`, target_element);
+  render(html`<${App} entriesEndpoint=${entriesEndpoint} syntheticData=${syntheticData} />`, target_element);
 }
 
 async function loadCss(cssUrl) {

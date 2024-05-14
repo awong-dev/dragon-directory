@@ -23,6 +23,8 @@
     "jspdf": "^2.5.1"
   },
   "devDependencies": {
+    "@faker-js/faker": "^8.4.1",
+    "faker-js": "^1.0.0",
     "http-server": "^14.1.1"
   }
 }
