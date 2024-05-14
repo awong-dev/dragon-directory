@@ -1,0 +1,198 @@
+{
+    "2": {
+        "label": "Parent \/ Guardian #1 Name",
+        "type": "name",
+        "inputs": {
+            "2.3": {
+                "label": "First",
+                "type": "subfield"
+            },
+            "2.6": {
+                "label": "Last",
+                "type": "subfield"
+            }
+        }
+    },
+    "3": {
+        "label": "Parent \/ Guardian #1 Email",
+        "type": "email"
+    },
+    "4": {
+        "label": "Parent \/ Guardian #1 Phone",
+        "type": "phone"
+    },
+    "17": {
+        "label": "Student #1 Name",
+        "type": "name",
+        "inputs": {
+            "17.3": {
+                "label": "First",
+                "type": "subfield"
+            },
+            "17.6": {
+                "label": "Last",
+                "type": "subfield"
+            }
+        }
+    },
+    "18": {
+        "label": "Student #1 Grade Level",
+        "type": "select"
+    },
+    "19": {
+        "label": "Student #1 Teacher",
+        "type": "select"
+    },
+    "8": {
+        "label": "Parent \/ Guardian #2 Name",
+        "type": "name",
+        "inputs": {
+            "8.3": {
+                "label": "First",
+                "type": "subfield"
+            },
+            "8.6": {
+                "label": "Last",
+                "type": "subfield"
+            }
+        }
+    },
+    "9": {
+        "label": "Parent \/ Guardian #2 Email",
+        "type": "email"
+    },
+    "5": {
+        "label": "Parent \/ Guardian #2 Phone",
+        "type": "phone"
+    },
+    "28": {
+        "label": "Student #2 Name",
+        "type": "name",
+        "inputs": {
+            "28.3": {
+                "label": "First",
+                "type": "subfield"
+            },
+            "28.6": {
+                "label": "Last",
+                "type": "subfield"
+            }
+        }
+    },
+    "31": {
+        "label": "Student #2 Grade Level",
+        "type": "select"
+    },
+    "34": {
+        "label": "Student #2 Teacher",
+        "type": "select"
+    },
+    "11": {
+        "label": "Parent \/ Guardian #3 Name",
+        "type": "name",
+        "inputs": {
+            "11.3": {
+                "label": "First",
+                "type": "subfield"
+            },
+            "11.6": {
+                "label": "Last",
+                "type": "subfield"
+            }
+        }
+    },
+    "13": {
+        "label": "Parent \/ Guardian #3 Email",
+        "type": "email"
+    },
+    "12": {
+        "label": "Parent \/ Guardian #3 Phone",
+        "type": "phone"
+    },
+    "27": {
+        "label": "Student #3 Name",
+        "type": "name",
+        "inputs": {
+            "27.3": {
+                "label": "First",
+                "type": "subfield"
+            },
+            "27.6": {
+                "label": "Last",
+                "type": "subfield"
+            }
+        }
+    },
+    "30": {
+        "label": "Student #3 Grade Level",
+        "type": "select"
+    },
+    "33": {
+        "label": "Student #3 Teacher",
+        "type": "select"
+    },
+    "45": {
+        "label": "Parent \/ Guardian #4 Name",
+        "type": "name",
+        "inputs": {
+            "45.3": {
+                "label": "First",
+                "type": "subfield"
+            },
+            "45.6": {
+                "label": "Last",
+                "type": "subfield"
+            }
+        }
+    },
+    "46": {
+        "label": "Parent \/ Guardian #4 Email",
+        "type": "email"
+    },
+    "47": {
+        "label": "Parent \/ Guardian #4 Phone",
+        "type": "phone"
+    },
+    "26": {
+        "label": "Student #4 Name",
+        "type": "name",
+        "inputs": {
+            "26.3": {
+                "label": "First",
+                "type": "subfield"
+            },
+            "26.6": {
+                "label": "Last",
+                "type": "subfield"
+            }
+        }
+    },
+    "29": {
+        "label": "Student #4 Grade Level",
+        "type": "select"
+    },
+    "32": {
+        "label": "Student #4 Teacher",
+        "type": "select"
+    },
+    "54": {
+        "label": "Neighborhood School",
+        "type": "select"
+    },
+    "55": {
+        "label": "Bus Route",
+        "type": "select"
+    },
+    "date_created": {
+        "label": "meta:date_created",
+        "type": "date"
+    },
+    "date_updated": {
+        "label": "meta:date_updated",
+        "type": "date"
+    },
+    "id": {
+        "label": "meta:entry_id",
+        "type": "text"
+    }
+}
