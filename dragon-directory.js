@@ -3,6 +3,7 @@ import jsPDF from 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/+esm'
 
 import { html, render } from 'https://unpkg.com/htm/preact/standalone.module.js'
 
+const pre_k_grade = "0";
 
 // A record can contain up to 4 parent/guardian information sets.
 //
@@ -121,6 +122,23 @@ function extract_students(record) {
   }
 
   return students;
+}
+
+// Map grade to value that can be compared and rendered
+function normalize_grade(grade) {
+  const pre_k_grade_value = "6";
+  if (pre_k_grade_value === grade) {
+    return pre_k_grade;
+  }
+  return grade;
+}
+
+// Turn grade string into display value
+function render_grade(grade) {
+  if (pre_k_grade === grade) {
+    return "Pre-K";
+  }
+  return "Grade " + grade;
 }
 
 // Turns record into an array of student objects.
@@ -260,7 +278,7 @@ function renderStudents(raw_csv) {
 
       return (html`
           <section class="teacher-card">
-            <header class="teacher">${v[0].teacher} - Grade ${v[0].grade}</header>
+            <header class="teacher">${v[0].teacher} - ${render_grade(v[0].grade)}</header>
             <ul class="classlist">
               ${v.map(student => {
                   if (student.in_dragon_directory) {
