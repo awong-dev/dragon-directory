@@ -6,7 +6,7 @@ import { html, render } from 'https://unpkg.com/htm/preact/standalone.module.js'
 const pre_k_grade = "0";
 
 // Map grade to value that can be compared and rendered
-function normalize_grade(grade) {
+function normalize_pre_k_grade(grade) {
   // The Pre-K grade is represented as the value 6, which is greater than
   // grade 5 (5th Grade). Mapping this to a value (0) that is less than
   // all the grades 1-5 means it can be sorted in a simple fashion.
@@ -134,7 +134,7 @@ function extract_students(record) {
       record[`Student #${i} Name (Last)`],
       record[`Student #${i} Name (Suffix)`],
     ].filter((x) => x.trim() !== "").join(' ').trim();
-      const grade = normalize_grade(record[`Student #${i} Grade Level`].trim());
+      const grade = normalize_pre_k_grade(record[`Student #${i} Grade Level`].trim());
       const teacher = record[`Student #${i} Teacher`].trim();
       if (student_name !== "") {
         students.push({ student_name, grade, teacher, neighborhood_school, bus_route, in_dragon_directory, orig_entry_date, orig_entry_date  });
