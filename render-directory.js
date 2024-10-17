@@ -19,6 +19,28 @@
 
 import { html, render, Component, useState } from 'https://unpkg.com/htm/preact/standalone.module.js'
 
+const preKGrade = "0";
+
+// Map grade to value that can be compared and rendered
+function normalizePreKGrade(grade) {
+  // The Pre-K grade is represented as the value 6, which is greater than
+  // grade 5 (5th Grade). Mapping this to a value (0) that is less than
+  // all the grades 1-5 means it can be sorted in a simple fashion.
+  const preKGradeValue = "6";
+  if (preKGradeValue === grade) {
+    return preKGrade;
+  }
+  return grade;
+}
+
+// Turn grade string into display value
+function renderGrade(grade) {
+  if (preKGrade === grade) {
+    return "Pre-K";
+  }
+  return "Grade " + grade;
+}
+
 // Parse the fragment into query parameters.
 function parseFragment() {
   const params = {};
@@ -139,7 +161,7 @@ function rowToStudents(row, fieldMapping) {
   for (const student_field of fieldMapping.students) {
     const student_name = Object.keys(student_field.name_inputs).map(input_id => row[input_id]).join(' ').trim();
     if (student_name) {
-      const grade = normalizeText(row[student_field.grade]);
+      const grade = normalizePreKGrade(normalizeText(row[student_field.grade]));
       const teacher = normalizeText(row[student_field.teacher]);
       students.push({
           student_name,
@@ -248,7 +270,7 @@ function groupByTeacher(students) {
   return Object.entries(grouped)
       .sort(byTeacherOrdering)
       .map(([_, students]) =>
-          [`${students[0].teacher} - Grade ${students[0].grade}`,
+          [`${students[0].teacher} - ${renderGrade(students[0].grade)}`,
            students]);
 }
 
