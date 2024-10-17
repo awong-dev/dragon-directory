@@ -35,7 +35,7 @@ function normalizePreKGrade(grade) {
 
 // Turn grade string into display value
 function renderGrade(grade) {
-  if (pre_k_grade === grade) {
+  if (preKGrade === grade) {
     return "Pre-K";
   }
   return "Grade " + grade;
