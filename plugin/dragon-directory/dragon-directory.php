@@ -206,7 +206,7 @@ function register_my_setting() {
     add_settings_section('general', 'General', false, PLUGIN_NAME);
 
     register_plugin_setting(OPTION_FORM_ACCESS_CONFIG,
-        'Form Acccess Config', makeDefaultSelectCriteria(),
+        'Form Acccess Config', '{}',
         'text', sanitize_text_field(...), field_html_textarea(...));
     register_plugin_setting(OPTION_SELECT_CRITERIA,
         'JSON list of row select criteria', makeDefaultSelectCriteria(),
@@ -300,11 +300,6 @@ function makeDefaultSelectCriteria() {
 
     // See https://core.trac.wordpress.org/ticket/21767 for stripslashes.
     return stripslashes(json_encode($criteria, JSON_PRETTY_PRINT));
-}
-
-function makeDefaultAccessCodeConfig() {
-    // See https://core.trac.wordpress.org/ticket/21767 for stripslashes.
-    return stripslashes(json_encode([], JSON_PRETTY_PRINT));
 }
 
 function makeDefaultExportedColumns() {
@@ -434,7 +429,7 @@ function rest_get_entries($request) {
         get_option(OPTION_FORM_ACCESS_CONFIG, '{}'),
         JSON_THROW_ON_ERROR);
 
-    $req_form_id = $request->get_param('form_id')
+    $req_form_id = $request->get_param('form_id');
 
     if (!isset($access_code_config[$req_form_id])) {
         return new \WP_Error(
@@ -443,7 +438,7 @@ function rest_get_entries($request) {
             array('status' => 404));
     }
 
-    $password = $access_code_config[$req_form_id]
+    $password = $access_code_config[$req_form_id];
 
     if ($password !== DISABLE_ACCESS_CODE_VALUE &&
         $password !== $request->get_param('access_code')) {

@@ -456,11 +456,10 @@ const promisedSleep = (delay) => new Promise((resolve) => setTimeout(resolve, de
 const ADMIN_PREFIX="admin:";
 
 // Shows the loading message.
-function App({entriesEndpoint, syntheticData}) {
+function App({entriesEndpoint, formId, syntheticData}) {
   const [allStudents, setAllStudents] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [formId, setFormId] = useState('');
   const [linkEntries, setLinkEntries] = useState(false);
 
   const parseData = (data) => {
@@ -477,7 +476,6 @@ function App({entriesEndpoint, syntheticData}) {
       }
 
       setAllStudents(newAllStudents);
-      setFormId(data['form_id']);
   };
 
   const tryFetchData = async (accessCode) => {
@@ -496,7 +494,7 @@ function App({entriesEndpoint, syntheticData}) {
         parseData(syntheticData);
       } else {
         const response = await fetch(
-            `${entriesEndpoint}?access_code=${accessCode}`,
+            `${entriesEndpoint}?access_code=${accessCode}&form_id=${formId}`,
             {
               headers: {
                 'Accept': 'application/json'
@@ -534,9 +532,9 @@ function App({entriesEndpoint, syntheticData}) {
   `;
 }
 
-function renderDirectory(entriesEndpoint, target_element, syntheticData) {
+function renderDirectory(entriesEndpoint, target_element, formId, syntheticData) {
   target_element.innerHTML = '';
-  render(html`<${App} entriesEndpoint=${entriesEndpoint} syntheticData=${syntheticData} />`, target_element);
+  render(html`<${App} entriesEndpoint=${entriesEndpoint} formId=${formId} syntheticData=${syntheticData} />`, target_element);
 }
 
 async function loadCss(cssUrl) {
