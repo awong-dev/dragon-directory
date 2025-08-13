@@ -9,6 +9,7 @@ namespace DragonDirectory;
 
 const PLUGIN_NAME = 'dragondirectory';
 const SETTINGS_GROUP = PLUGIN_NAME . '-group';
+const OPTION_FORM_ACCESS_CONFIG = PLUGIN_NAME . '_form_access_config';
 const OPTION_ACCESS_CODE = PLUGIN_NAME . '_access_password';
 const OPTION_FORM_ID = PLUGIN_NAME . '_form_id';
 const OPTION_SELECT_CRITERIA = PLUGIN_NAME . '_select_criteria';
@@ -39,11 +40,10 @@ function options_page_html() {
         </form>
         <div>
         <table border=1>
-        <tr><td>The access code is a weak-speed bump to avoid easy directory access.
+        <tr><td>Form Access Config is a json dict of form id to a shared access code.
+            The access code is a weak-speed bump to avoid easy directory access.
             It's a shared password by nature.  Set it to something.  If you really
-            want to disable it, set it to the magic strinct <?php DISABLE_ACCESS_CODE_VALUE ?> </td></tr>
-
-        <tr><td>The form id is the number representing the form to set. Look at the "ID" column in <a href="/wp-admin/admin.php?page=gf_edit_forms">the Gravity Forms settings.</a></td></tr>
+            want to disable it, set it to the magic string <?php DISABLE_ACCESS_CODE_VALUE ?> </td></tr>
 
         <tr><td>The select criteria is a json array listing a positive filter for all entries retrieved. This must be set to at least an empty array (eg []) just to ensure the site admin thinks about it. Rows retrieved here are made avaiable via a REST API as long as the access code is given so you do NOT want to select any rows that should be kept private. An example of such a filter is:
         <p>
@@ -205,9 +205,9 @@ function sanitize_field_id($input) {
 function register_my_setting() {
     add_settings_section('general', 'General', false, PLUGIN_NAME);
 
-    register_plugin_setting(OPTION_ACCESS_CODE, 'Access Code', '');
-    register_plugin_setting(OPTION_FORM_ID, 'Form ID', '', 'integer',
-        sanitize_field_id(...), field_html_formid(...));
+    register_plugin_setting(OPTION_FORM_ACCESS_CONFIG,
+        'Form Acccess Config', makeDefaultSelectCriteria(),
+        'text', sanitize_text_field(...), field_html_textarea(...));
     register_plugin_setting(OPTION_SELECT_CRITERIA,
         'JSON list of row select criteria', makeDefaultSelectCriteria(),
         'text', sanitize_text_field(...), field_html_textarea(...));
@@ -300,6 +300,11 @@ function makeDefaultSelectCriteria() {
 
     // See https://core.trac.wordpress.org/ticket/21767 for stripslashes.
     return stripslashes(json_encode($criteria, JSON_PRETTY_PRINT));
+}
+
+function makeDefaultAccessCodeConfig() {
+    // See https://core.trac.wordpress.org/ticket/21767 for stripslashes.
+    return stripslashes(json_encode([], JSON_PRETTY_PRINT));
 }
 
 function makeDefaultExportedColumns() {
@@ -425,24 +430,20 @@ function get_selected_entries($form_id) {
 }
 
 function rest_get_entries($request) {
-    $password = get_option(OPTION_ACCESS_CODE, '');
-    if (!$password) {
+    $access_code_config = json_decode(
+        get_option(OPTION_FORM_ACCESS_CONFIG, '{}'),
+        JSON_THROW_ON_ERROR);
+
+    $req_form_id = $request->get_param('form_id')
+
+    if (!isset($access_code_config[$req_form_id])) {
         return new \WP_Error(
-          'access_code_unset',
-          "Access Code Not Set. To really disable access codes, set it to '" .
-              DISABLE_ACCESS_CODE_VALUE .
-              "' and the API will be public",
-          array('status' => 500) );
+            'unknown_form_id',
+            'Unknown Form ID',
+            array('status' => 404));
     }
 
-    $form_id = intval(get_option(OPTION_FORM_ID, "-1"));
-
-    if ($form_id < 0) {
-        return new \WP_Error(
-            'invalid_form_id',
-            'Invalid Form Id',
-            array('status' => 500));
-    }
+    $password = $access_code_config[$req_form_id]
 
     if ($password !== DISABLE_ACCESS_CODE_VALUE &&
         $password !== $request->get_param('access_code')) {
@@ -452,10 +453,10 @@ function rest_get_entries($request) {
             array('status' => 401));
     }
 
-    return get_selected_entries($form_id);
+    return get_selected_entries($req_form_id);
 }
 
-add_action( 'rest_api_init', function () {
+add_action('rest_api_init', function () {
     register_rest_route(PLUGIN_NAME . "/v1", '/entries', array(
           'methods' => 'GET',
           'callback' => rest_get_entries(...),
