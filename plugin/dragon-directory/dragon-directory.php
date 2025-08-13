@@ -382,7 +382,7 @@ function get_selected_entries($form_id) {
         'field_filters' => $field_filters
         );
 
-    $paging = array( 'offset' => 0, 'page_size' => 1000);
+    $paging = array('offset' => 0, 'page_size' => 1000);
     $selected_data = array();
     while (1) {
         $entries = \GFAPI::get_entries($form_id, $search_criteria, null, $paging);
