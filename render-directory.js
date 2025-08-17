@@ -421,22 +421,37 @@ function Directory({allStudents, formId, linkEntries}) {
 }
 
 // Shows the Load Directory control.
-function LoadDirectoryControl({tryFetchData, message}) {
+//
+// formMap is a javascript map that preserves insertion order. The key is
+// the label for the formId. This allows control of the select optoins.
+// The first entry is the default.
+function LoadDirectoryControl({tryFetchData, selectedForm, formMap, message}) {
   const handleClick = () => {
     tryFetchData(document.getElementById('access-code').value);
 
     return false; // Do not reload page.
   };
 
+  const options = [];
+  for (const [formName, formId] of formMap) {
+    options.push(
+      html`<option value=${formName}>${formName}</option>`
+    )
+  }
+
+
+  console.log(selectedForm);
   return html`
     <div class="load-directory-control">
-      ${html`<div class="error-message">${message}</div>`}
-      <form onSubmit=${handleClick}>
-        <label for="access-code">Access Code:</label>
-        <input id="access-code" type="password"></input>
-        <button id="load-directory-button" type="submit">
-        Load Directory
-        </button>
+      ${html`<div class="load-error-message">${message}</div>`}
+      <form class="load-form" onSubmit=${handleClick}>
+        <select class="load-select" name="form-name" value=${selectedForm}>
+          ${options}
+        </select>
+
+        <input id="access-code" placeholder="Access Code"></input>
+
+        <button id="load-directory-button" type="submit">Load Directory</button>
       </form>
     <//>
   `;
@@ -455,12 +470,26 @@ const promisedSleep = (delay) => new Promise((resolve) => setTimeout(resolve, de
 
 const ADMIN_PREFIX="admin:";
 
-// Shows the loading message.
-function App({entriesEndpoint, formId, syntheticData}) {
+// The main entrypoint to directory component.
+//
+// formList is a list of [formName, formId] pairs.  If formName is repeated,
+// later values override the previous ones but ordering may not be well defined.
+//
+// A list is used instead of an object because it allows order to be specified.
+// The first item is the default entry.
+function App({entriesEndpoint, formList, syntheticData}) {
+  const formMap = new Map();
+  for (const [formName, formId] of formList) {
+    formMap.set(formName, formId);
+  }
+
   const [allStudents, setAllStudents] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [linkEntries, setLinkEntries] = useState(false);
+  const [selectedForm, setSelectedForm] = useState(formMap.keys().next().value);
+
+  const selectedFormId = formMap[selectedForm];
 
   const parseData = (data) => {
       const fieldMapping = makeFieldMapping(data['column_info']);
@@ -488,13 +517,13 @@ function App({entriesEndpoint, formId, syntheticData}) {
 
     try {
       // Wait slightly just to be cute.
-      await promisedSleep(500);
+      await promisedSleep(300);
 
       if (syntheticData) {
         parseData(syntheticData);
       } else {
         const response = await fetch(
-            `${entriesEndpoint}?access_code=${accessCode}&form_id=${formId}`,
+            `${entriesEndpoint}?access_code=${accessCode}&form_id=${selectedFormId}`,
             {
               headers: {
                 'Accept': 'application/json'
@@ -523,18 +552,22 @@ function App({entriesEndpoint, formId, syntheticData}) {
     }
 
     return html`
-      <${LoadDirectoryControl} tryFetchData=${tryFetchData} message=${errorMessage} />
+      <${LoadDirectoryControl}
+        selectedForm=${selectedForm}
+        formMap=${formMap}
+        tryFetchData=${tryFetchData}
+        message=${errorMessage} />
     `;
   }
 
   return html`
-    <${Directory} allStudents=${allStudents} formId=${formId} linkEntries=${linkEntries} />
+    <${Directory} allStudents=${allStudents} formId=${selectedFormId} linkEntries=${linkEntries} />
   `;
 }
 
-function renderDirectory(entriesEndpoint, target_element, formId, syntheticData) {
+function renderDirectory(entriesEndpoint, target_element, formList, syntheticData) {
   target_element.innerHTML = '';
-  render(html`<${App} entriesEndpoint=${entriesEndpoint} formId=${formId} syntheticData=${syntheticData} />`, target_element);
+  render(html`<${App} entriesEndpoint=${entriesEndpoint} formList=${formList} syntheticData=${syntheticData} />`, target_element);
 }
 
 async function loadCss(cssUrl) {

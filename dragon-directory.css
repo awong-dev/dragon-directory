@@ -1,3 +1,42 @@
+.load-directory-control {
+    display: flex;
+    flex-flow: column;
+    gap: 2px;
+}
+
+.load-error-message {
+    background-color: #cf0000;
+    color: #efefef;
+    text-align: center;
+}
+
+.load-form {
+    display: flex;
+    flex-flow: row;
+    gap: 1ex;
+}
+
+.load-select {
+    max-width: max-content;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    border-bottom: 1px black solid;
+    background-color: #e3e3e3;
+    font-weight: 600;
+}
+
+#load-directory-button {
+    flex-grow: 2;
+    max-width: 30ex;
+}
+
+#access-code {
+    flex-grow: 2;
+    padding-left: 1ex;
+    padding-right: 1ex;
+}
+
 .directory-control {
     padding: 0.5ex 1ex 0.5ex 1ex;
 }
