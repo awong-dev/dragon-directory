@@ -425,11 +425,10 @@ function Directory({allStudents, formId, linkEntries}) {
 // formMap is a javascript map that preserves insertion order. The key is
 // the label for the formId. This allows control of the select optoins.
 // The first entry is the default
-function LoadDirectoryControl({tryFetchData, formMap, message}) {
-  const [selectedForm, setSelectedForm] = useState(formMap.values().next().value);
-
-  const handleSelectChange = (option) => {
-    setSelectedForm(option["label"]);
+function LoadDirectoryControl({tryFetchData, selectedFormId, setSelectedFormId, formMap, message}) {
+  const handleSelectChange = (e) => {
+    console.log(e.target.value);
+    setSelectedFormId(e.target.value);
   };
 
   const handleClick = () => {
@@ -449,7 +448,7 @@ function LoadDirectoryControl({tryFetchData, formMap, message}) {
   return html`
     <div class="load-directory-control">
       <form class="load-form" onSubmit=${handleClick}>
-        <select class="load-select" name="form-name" value=${selectedForm}>
+        <select class="load-select" name="form-name" value=${selectedFormId} onChange=${handleSelectChange}>
           ${options}
         </select>
 
@@ -492,7 +491,7 @@ function App({entriesEndpoint, formList, syntheticData}) {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [linkEntries, setLinkEntries] = useState(false);
-  const [formId, setFormId] = useState(null);
+  const [selectedFormId, setSelectedFormId] = useState(formMap.values().next().value);
 
   const parseData = (data) => {
       const fieldMapping = makeFieldMapping(data['column_info']);
@@ -510,9 +509,8 @@ function App({entriesEndpoint, formList, syntheticData}) {
       setAllStudents(newAllStudents);
   };
 
-  const tryFetchData = async (accessCode, formId) => {
+  const tryFetchData = async (accessCode) => {
     setIsLoading(true);
-    setFormId(formId);
 
     if (accessCode.startsWith(ADMIN_PREFIX)) {
       setLinkEntries(true);
@@ -527,7 +525,7 @@ function App({entriesEndpoint, formList, syntheticData}) {
         parseData(syntheticData);
       } else {
         const response = await fetch(
-            `${entriesEndpoint}?access_code=${accessCode}&form_id=${formId}`,
+            `${entriesEndpoint}?access_code=${accessCode}&form_id=${selectedFormId}`,
             {
               headers: {
                 'Accept': 'application/json'
@@ -559,6 +557,8 @@ function App({entriesEndpoint, formList, syntheticData}) {
       <${LoadDirectoryControl}
         formMap=${formMap}
         tryFetchData=${tryFetchData}
+        selectedFormId=${selectedFormId}
+        setSelectedFormId=${setSelectedFormId}
         message=${errorMessage} />
     `;
   }
@@ -566,7 +566,7 @@ function App({entriesEndpoint, formList, syntheticData}) {
   return html`
     <${Directory}
       allStudents=${allStudents}
-      formId=${formId}
+      formId=${selectedFormId}
       linkEntries=${linkEntries} />
   `;
 }
