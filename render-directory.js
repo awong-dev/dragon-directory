@@ -412,6 +412,10 @@ function Directory({allStudents, formId, linkEntries}) {
   const fragmentParams = parseFragment();
   const [groupBy, setGroupBy] = useState(fragmentParams['groupby'] || "teacher");
 
+  if (!allStudents) {
+    return html`<div></div>`;
+  }
+
   return html`
       <div class="directory-container">
           <${Controls} handleClick=${setGroupBy} />
@@ -558,6 +562,10 @@ function App({entriesEndpoint, formList, syntheticData}) {
         selectedFormId=${selectedFormId}
         setSelectedFormId=${setSelectedFormId}
         message=${errorMessage} />
+      <${Directory}
+        allStudents=${allStudents}
+        formId=${selectedFormId}
+        linkEntries=${linkEntries} />
     </div>
   `;
 }
