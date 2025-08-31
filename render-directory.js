@@ -545,7 +545,7 @@ function App({entriesEndpoint, formList, syntheticData}) {
             });
 
         if (!response.ok) {
-          setErrorMessage(`Retrieving Entries failed. Status: ${response.statusText}`);
+          setErrorMessage(`Retrieving Entries failed. Status: ${response.message}`);
           return;
         }
 
