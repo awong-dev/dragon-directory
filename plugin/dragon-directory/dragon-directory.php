@@ -89,7 +89,6 @@ function options_page_html() {
           "Student #4 Grade Level",
           "Student #4 Teacher",
           "Neighborhood School",
-          "Neighborhood School",
           "Bus Route" ]
         </code>
         </pre>
@@ -315,7 +314,6 @@ function makeDefaultExportedColumns() {
     }
 
     $columns[] = 'Neighborhood School';
-    $columns[] = 'Neighborhood School';
     $columns[] = 'Bus Route';
 
     // See https://core.trac.wordpress.org/ticket/21767 for stripslashes.
@@ -362,10 +360,11 @@ function get_selected_entries($form_id) {
     $field_filters = array(
         'mode' => 'any',
     );
-    /*
+
     $filters_json = trim(get_option(OPTION_SELECT_CRITERIA, ""));
     if (!$filters_json) {
       // Don't allow an unset field.
+      error_log("To disable unintentional info disclosure, Dragon directory must have " . OPTION_SELECT_CRITERIA . " filter set to something. Can be [].");
       return array("column_info" => $columns, "rows" => ["1" => "select filter unset"]);
     }
 
@@ -375,7 +374,6 @@ function get_selected_entries($form_id) {
         // Pick out the values to avoid passing random params through.
         $field_filters[] = array('key' => $field_label, 'value' => $entry['value']);
     }
-    */
 
     $search_criteria = array(
         'status'        => 'active',

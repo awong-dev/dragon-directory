@@ -546,28 +546,20 @@ function App({entriesEndpoint, formList, syntheticData}) {
     }
   };
 
-  if (!allStudents) {
-    if (isLoading) {
-      return html`
-        <${LoadingMessage} />
-      `;
-    }
+  const directoryContents = [];
+  if (isLoading) {
+    directoryContents.push(html`<${LoadingMessage} />`);
+  }
 
-    return html`
+  return html`
+    <div>
       <${LoadDirectoryControl}
         formMap=${formMap}
         tryFetchData=${tryFetchData}
         selectedFormId=${selectedFormId}
         setSelectedFormId=${setSelectedFormId}
         message=${errorMessage} />
-    `;
-  }
-
-  return html`
-    <${Directory}
-      allStudents=${allStudents}
-      formId=${selectedFormId}
-      linkEntries=${linkEntries} />
+    </div>
   `;
 }
 
