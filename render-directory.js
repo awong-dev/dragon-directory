@@ -431,10 +431,9 @@ function LoadDirectoryControl({tryFetchData, selectedFormId, setSelectedFormId, 
     setSelectedFormId(e.target.value);
   };
 
-  const handleClick = () => {
+  const handleSubmit = (e) => {
+    e.preventDefault();  // Do not reload page.
     tryFetchData(document.getElementById('access-code').value);
-
-    return false; // Do not reload page.
   };
 
   const options = [];
@@ -447,7 +446,7 @@ function LoadDirectoryControl({tryFetchData, selectedFormId, setSelectedFormId, 
 
   return html`
     <div class="load-directory-control">
-      <form class="load-form" onSubmit=${handleClick}>
+      <form class="load-form" onSubmit=${handleSubmit}>
         <select class="load-select" name="form-name" value=${selectedFormId} onChange=${handleSelectChange}>
           ${options}
         </select>
