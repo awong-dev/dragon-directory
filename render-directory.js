@@ -440,7 +440,6 @@ function Directory({allStudents, formId, linkEntries}) {
 // The first entry is the default
 function LoadDirectoryControl({tryFetchData, selectedFormId, setSelectedFormId, formMap, message}) {
   const handleSelectChange = (e) => {
-    console.log(e.target.value);
     setSelectedFormId(e.target.value);
   };
 
@@ -530,6 +529,9 @@ function App({entriesEndpoint, formList, syntheticData}) {
     }
 
     try {
+      // Reset errors.
+      setErrorMessage("");
+
       // Wait slightly just to be cute.
       await promisedSleep(300);
 
@@ -543,6 +545,11 @@ function App({entriesEndpoint, formList, syntheticData}) {
                 'Accept': 'application/json'
                 }
             });
+
+        if (response.status === 401) {
+          setErrorMessage("Invalid Access code");
+          return;
+        }
 
         if (!response.ok) {
           setErrorMessage(`Retrieving Entries failed. Status: ${response.message}`);
