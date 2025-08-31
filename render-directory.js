@@ -220,6 +220,15 @@ function groupBySchool(students) {
   return Object.entries(results).sort(byGroupNameOrdering);
 }
 
+// The grade for pre-K in cascadia comes out at 6 for some reason. :-/
+function gradeToString(grade) {
+  if (grade == 6) {
+    return 'Pre-K';
+  }
+
+  return grade.toString();
+}
+
 // Returns students grouped by teacher. The object key
 // is the teacher last name, first name, and grade.
 function groupByTeacher(students) {
@@ -248,7 +257,7 @@ function groupByTeacher(students) {
   return Object.entries(grouped)
       .sort(byTeacherOrdering)
       .map(([_, students]) =>
-          [`${students[0].teacher} - Grade ${students[0].grade}`,
+          [`${students[0].teacher} - Grade ${gradeToString(students[0].grade)}`,
            students]);
 }
 
